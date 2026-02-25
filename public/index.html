@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Receptöversättaren</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; background: #f5f0e8; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media print { button { display: none !important; } }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState } = React;
+
+// ── PDF generator (pure JS, no dependencies) ─────────────────────────────────
+function pdfEncode(s) {
+  return String(s||"").replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)")
+    .split("").map(c=>{const n=c.charCodeAt(0);if(n<32)return" ";if(n>255)return"?";if(n>127)return"\\"+n.toString(8).padStart(3,"0");return c;}).join("");
+}
+function wrapText(text,fontSize){
+  const max=Math.floor(495/(fontSize*0.55));
+  const words=String(text||"").split(/\s+/).filter(Boolean);
+  const lines=[];let line="";
+  for(const w of words){const t=line?line+" "+w:w;if(t.length>max&&line){lines.push(line);line=w;}else line=t;}
+  if(line)lines.push(line);return lines.length?lines:[""];
+}
+function generatePDF(recipe){
+  const PW=595,PH=842,M=55;const items=[];
+  const add=(text,size,bold,color,indent,spaceBefore)=>items.push({text:text||"",size:size||11,bold:!!bold,color:color||[30,30,30],indent:indent||0,spaceBefore:spaceBefore||0});
+  add(recipe.titel||"Recept",20,true,[45,74,62],0,0);
+  if(recipe.beskrivning)add(recipe.beskrivning,10,false,[107,98,88],0,8);
+  const mt=recipe.meta||{};
+  const ms=[mt.portioner,mt.totaltid&&"Totalt: "+mt.totaltid,mt.svarighetsgrad].filter(Boolean).join("   |   ");
+  if(ms)add(ms,9,false,[130,120,110],0,6);
+  add("",8);add("Ingredienser",13,true,[184,92,56],0,4);
+  let lg="";
+  for(const ing of(recipe.ingredienser||[])){
+    if(ing.grupp&&ing.grupp!==lg){add(ing.grupp.toUpperCase(),8,true,[107,98,88],0,8);lg=ing.grupp;}
+    add("- "+(ing.mangd?ing.mangd+"   ":"")+(ing.ingrediens||""),10,false,[30,30,30],8,0);
+  }
+  add("",8);add("Gor sa har",13,true,[184,92,56],0,4);
+  (recipe.steg||[]).forEach((s,i)=>add((i+1)+".  "+s,10,false,[30,30,30],8,4));
+  if(recipe.noteringar){add("",8);add("Tips & noteringar",11,true,[184,92,56],0,0);add(recipe.noteringar,10,false,[107,98,88],8,4);}
+  const allOps=[];let pi=0,y=PH-M;
+  for(const item of items){y-=item.spaceBefore;if(y<M){pi++;y=PH-M;}if(!item.text)continue;
+    for(const line of wrapText(item.text,item.size)){const lh=item.size*1.5;if(y-lh<M){pi++;y=PH-M;}
+      const col=item.color||[30,30,30];allOps.push({pi,x:M+item.indent,y,text:pdfEncode(line),size:item.size,bold:item.bold,r:col[0],g:col[1],b:col[2]});y-=lh;}}
+  const numPages=pi+1;
+  const streams=Array.from({length:numPages},(_,p)=>allOps.filter(op=>op.pi===p).map(op=>{
+    const r=(op.r/255).toFixed(3),g=(op.g/255).toFixed(3),b=(op.b/255).toFixed(3);
+    return `${r} ${g} ${b} rg\nBT\n/${op.bold?"F2":"F1"} ${op.size} Tf\n${op.x} ${op.y} Td\n(${op.text}) Tj\nET\n`;
+  }).join(""));
+  const pageRefs=Array.from({length:numPages},(_,p)=>`${5+p*2} 0 R`).join(" ");
+  const objs={};
+  objs[1]="<< /Type /Catalog /Pages 2 0 R >>";
+  objs[2]=`<< /Type /Pages /Kids [${pageRefs}] /Count ${numPages} >>`;
+  objs[3]="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+  objs[4]="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
+  for(let p=0;p<numPages;p++){
+    objs[5+p*2]=`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}]\n/Contents ${6+p*2} 0 R\n/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>`;
+    objs[6+p*2]=`<< /Length ${streams[p].length} >>\nstream\n${streams[p]}\nendstream`;}
+  const totalObjs=5+numPages*2;let pdf="%PDF-1.4\n";const offsets={};
+  for(let i=1;i<totalObjs;i++){offsets[i]=pdf.length;pdf+=`${i} 0 obj\n${objs[i]}\nendobj\n`;}
+  const xrefAt=pdf.length;pdf+=`xref\n0 ${totalObjs}\n0000000000 65535 f \n`;
+  for(let i=1;i<totalObjs;i++)pdf+=String(offsets[i]).padStart(10,"0")+" 00000 n \n";
+  pdf+=`trailer\n<< /Size ${totalObjs} /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF`;
+  const blob=new Blob([pdf],{type:"application/pdf"});const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;
+  a.download=(recipe.titel||"recept").replace(/[^a-z0-9]/gi,"-").toLowerCase()+".pdf";
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+// ── Backend call – API key stays on server ────────────────────────────────────
+async function callBackend(type, content, url) {
+  const body = type === "url" ? { type, url } : { type, content };
+  const res = await fetch("/api/translate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || "Server error " + res.status);
+  return data.recipe;
+}
+
+// ── Copy to clipboard ─────────────────────────────────────────────────────────
+function buildPlainText(result, srcUrl) {
+  const m = result.meta||{};
+  let t = (result.titel||"") + "\n";
+  if (result.beskrivning) t += result.beskrivning + "\n";
+  [m.portioner, m.totaltid, m.svarighetsgrad].filter(Boolean).forEach(v => t += v + "   ");
+  t += "\n\nINGREDIENSER\n"; let lg = "";
+  for (const i of (result.ingredienser||[])) {
+    if (i.grupp && i.grupp !== lg) { t += "\n" + i.grupp.toUpperCase() + "\n"; lg = i.grupp; }
+    t += "- " + (i.mangd ? i.mangd + "  " : "") + (i.ingrediens||"") + "\n";
+  }
+  t += "\nGOR SA HAR\n";
+  (result.steg||[]).forEach((s,i) => { t += (i+1) + ". " + s + "\n"; });
+  if (result.noteringar) t += "\nTIPS\n" + result.noteringar;
+  if (srcUrl) t += "\n\nKalla: " + srcUrl;
+  return t.trim();
+}
+
+// ── SVG Sumi-e illustration ───────────────────────────────────────────────────
+function SumiIllustration() {
+  return (
+    <svg viewBox="0 0 1200 260" xmlns="http://www.w3.org/2000/svg" style={{width:"100%",height:"auto",display:"block"}}>
+      <defs>
+        <filter id="ink" x="-10%" y="-10%" width="120%" height="120%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" seed="2" result="noise"/>
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.8" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+          <feGaussianBlur in="displaced" stdDeviation="0.4"/>
+        </filter>
+        <filter id="splat"><feGaussianBlur stdDeviation="0.6"/></filter>
+      </defs>
+      {/* Whisk */}
+      <g filter="url(#ink)">
+        <path d="M 95 245 C 94 220 92 195 90 168 C 89 150 90 135 92 118" stroke="#2d4a3e" strokeWidth="7" fill="none" strokeLinecap="round" opacity="0.88"/>
+        <path d="M 92 118 C 76 92 68 62 70 38 C 71 22 80 10 90 12 C 100 14 104 30 100 55 C 97 75 92 98 92 118" stroke="#2d4a3e" strokeWidth="3.2" fill="none" strokeLinecap="round" opacity="0.85"/>
+        <path d="M 92 118 C 82 88 78 58 82 36 C 85 20 93 10 101 14 C 108 18 109 35 105 60 C 102 80 95 100 92 118" stroke="#2d4a3e" strokeWidth="2.6" fill="none" strokeLinecap="round" opacity="0.75"/>
+        <path d="M 92 118 C 92 88 92 58 94 36 C 96 20 103 11 110 16 C 117 21 115 40 110 65 C 106 85 97 102 92 118" stroke="#2d4a3e" strokeWidth="2.8" fill="none" strokeLinecap="round" opacity="0.70"/>
+        <path d="M 92 118 C 102 90 108 62 107 40 C 107 24 102 12 113 16 C 122 20 120 42 114 68 C 110 88 100 105 92 118" stroke="#2d4a3e" strokeWidth="2.4" fill="none" strokeLinecap="round" opacity="0.65"/>
+        <path d="M 92 118 C 108 95 118 68 116 46 C 114 28 108 16 117 18 C 126 20 126 45 119 72 C 114 92 104 108 92 118" stroke="#2d4a3e" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.55"/>
+        <path d="M 72 70 Q 96 75 118 68" stroke="#2d4a3e" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.3"/>
+        <path d="M 70 88 Q 95 94 116 86" stroke="#2d4a3e" strokeWidth="1.4" fill="none" strokeLinecap="round" opacity="0.25"/>
+      </g>
+      <g filter="url(#splat)" opacity="0.18">
+        <circle cx="52" cy="55" r="5" fill="#2d4a3e"/><circle cx="138" cy="42" r="3.5" fill="#2d4a3e"/>
+        <circle cx="42" cy="88" r="4" fill="#2d4a3e"/><circle cx="60" cy="110" r="3" fill="#2d4a3e"/>
+        <circle cx="130" cy="105" r="2" fill="#b85c38" opacity="0.9"/>
+      </g>
+      {/* Rolling pin */}
+      <g transform="rotate(-8, 400, 140)" filter="url(#ink)">
+        <path d="M 258 148 C 270 138 350 125 430 122 C 510 119 570 124 590 132 C 608 140 612 155 598 164 C 582 174 510 180 430 182 C 350 184 278 176 262 165 C 250 157 248 156 258 148 Z" fill="#2d4a3e" fillOpacity="0.08" stroke="#2d4a3e" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.6"/>
+        <path d="M 258 148 C 244 144 228 146 220 154 C 214 162 218 172 230 174 C 242 176 256 168 262 165" stroke="#2d4a3e" strokeWidth="5.5" fill="none" strokeLinecap="round" opacity="0.75"/>
+        <path d="M 598 132 C 614 126 632 128 638 138 C 644 148 638 160 626 162 C 614 164 600 158 598 132" stroke="#2d4a3e" strokeWidth="5.5" fill="none" strokeLinecap="round" opacity="0.75"/>
+        <path d="M 310 123 C 312 148 310 172" stroke="#2d4a3e" strokeWidth="1" fill="none" opacity="0.2"/>
+        <path d="M 430 121 C 432 147 430 173" stroke="#2d4a3e" strokeWidth="1" fill="none" opacity="0.18"/>
+        <path d="M 548 124 C 550 150 548 175" stroke="#2d4a3e" strokeWidth="1" fill="none" opacity="0.2"/>
+        <ellipse cx="340" cy="148" rx="18" ry="6" fill="#ede6d6" opacity="0.55"/>
+        <ellipse cx="460" cy="144" rx="14" ry="5" fill="#ede6d6" opacity="0.5"/>
+      </g>
+      {/* Bread loaf */}
+      <g transform="translate(650, 18)" filter="url(#ink)">
+        <ellipse cx="140" cy="215" rx="105" ry="12" fill="#2d4a3e" opacity="0.07"/>
+        <path d="M 22 200 C 18 170 20 140 28 110 C 38 75 62 45 95 28 C 120 14 158 8 188 14 C 220 20 245 42 255 72 C 264 98 262 135 254 168 C 248 192 240 206 228 212 C 195 224 55 228 22 200 Z" fill="#b85c38" fillOpacity="0.14"/>
+        <path d="M 22 200 C 18 170 20 140 28 110 C 38 75 62 45 95 28 C 120 14 158 8 188 14 C 220 20 245 42 255 72 C 264 98 262 135 254 168 C 248 192 240 206 228 212 C 195 224 55 228 22 200 Z" stroke="#b85c38" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.72"/>
+        <path d="M 72 28 C 80 55 80 100 76 148" stroke="#2d4a3e" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.42"/>
+        <path d="M 114 18 C 122 46 122 92 118 142" stroke="#2d4a3e" strokeWidth="2.8" fill="none" strokeLinecap="round" opacity="0.38"/>
+        <path d="M 156 14 C 162 42 162 88 158 140" stroke="#2d4a3e" strokeWidth="2.6" fill="none" strokeLinecap="round" opacity="0.35"/>
+        <path d="M 196 18 C 202 46 200 92 196 142" stroke="#2d4a3e" strokeWidth="2.4" fill="none" strokeLinecap="round" opacity="0.30"/>
+        <path d="M 100 16 C 96 2 100 -12 96 -24" stroke="#2d4a3e" strokeWidth="1.8" fill="none" opacity="0.18" strokeLinecap="round"/>
+        <path d="M 140 10 C 140 -4 144 -18 140 -30" stroke="#2d4a3e" strokeWidth="1.8" fill="none" opacity="0.15" strokeLinecap="round"/>
+        <path d="M 180 12 C 184 -2 182 -16 186 -28" stroke="#2d4a3e" strokeWidth="1.8" fill="none" opacity="0.14" strokeLinecap="round"/>
+      </g>
+      {/* Herb sprigs */}
+      <g opacity="0.55">
+        <path d="M 598 195 C 590 175 582 152 578 132" stroke="#2d4a3e" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
+        <path d="M 590 168 C 578 162 570 155 566 145" stroke="#2d4a3e" strokeWidth="1.4" fill="none" strokeLinecap="round"/>
+        <path d="M 594 158 C 604 152 608 144 606 136" stroke="#2d4a3e" strokeWidth="1.4" fill="none" strokeLinecap="round"/>
+        <path d="M 1010 185 C 1018 165 1024 142 1020 120" stroke="#2d4a3e" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
+        <path d="M 1018 158 C 1030 152 1036 144 1032 134" stroke="#2d4a3e" strokeWidth="1.4" fill="none" strokeLinecap="round"/>
+        <ellipse cx="572" cy="150" rx="6" ry="3" fill="#2d4a3e" opacity="0.4" transform="rotate(-30 572 150)"/>
+        <ellipse cx="1034" cy="140" rx="6" ry="3" fill="#2d4a3e" opacity="0.4" transform="rotate(25 1034 140)"/>
+        <circle cx="555" cy="185" r="2.5" fill="#b85c38" opacity="0.5"/>
+        <circle cx="1000" cy="200" r="2.2" fill="#b85c38" opacity="0.45"/>
+      </g>
+      {/* Wooden spoon */}
+      <g transform="rotate(18, 1120, 130)" filter="url(#ink)">
+        <path d="M 1148 252 C 1147 225 1145 195 1143 162 C 1141 138 1140 115 1141 95" stroke="#2d4a3e" strokeWidth="7.5" fill="none" strokeLinecap="round" opacity="0.8"/>
+        <path d="M 1141 95 C 1135 78 1125 60 1118 48 C 1110 35 1102 26 1100 22 C 1098 16 1102 10 1112 10 C 1122 10 1132 18 1138 30 C 1144 42 1148 60 1147 78 C 1146 88 1144 94 1141 95 Z" fill="#2d4a3e" fillOpacity="0.12" stroke="#2d4a3e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.7"/>
+      </g>
+      <g filter="url(#splat)">
+        <circle cx="180" cy="165" r="2.8" fill="#2d4a3e" opacity="0.14"/>
+        <circle cx="430" cy="235" r="3" fill="#2d4a3e" opacity="0.08"/>
+        <circle cx="760" cy="240" r="2.2" fill="#b85c38" opacity="0.1"/>
+      </g>
+    </svg>
+  );
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const EXAMPLE = `Chocolate Chip Cookies (24 cookies)
+350 degrees F, 10-12 minutes
+
+2 1/4 cups flour
+1 cup (2 sticks) butter, softened
+3/4 cup granulated sugar
+3/4 cup brown sugar
+2 large eggs
+1 tsp vanilla extract
+1 tsp baking soda, 1 tsp salt
+2 cups chocolate chips
+
+Beat butter and sugars until fluffy. Add eggs and vanilla.
+Mix in flour, baking soda, and salt. Stir in chips.
+Drop by rounded tablespoon onto ungreased baking sheets.
+Bake 9-11 minutes until golden brown. Cool on wire rack.`;
+
+const F="#2d4a3e",T="#b85c38",G="#c9a84c",CR="#f5f0e8",PA="#ede6d6",WA="#faf7f2",MI="#6b6258",BO="#d4c9b5";
+
+// ── App ───────────────────────────────────────────────────────────────────────
+function App() {
+  const [tab,      setTab]      = useState("text");
+  const [input,    setInput]    = useState(EXAMPLE);
+  const [url,      setUrl]      = useState("");
+  const [result,   setResult]   = useState(null);
+  const [srcUrl,   setSrcUrl]   = useState(null);
+  const [busy,     setBusy]     = useState(false);
+  const [status,   setStatus]   = useState("");
+  const [copied,   setCopied]   = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+
+  async function translate() {
+    setStatus(""); setResult(null); setBusy(true);
+    try {
+      if (tab === "text") {
+        if (!input.trim()) throw new Error("Klistra in ett recept.");
+        setStatus("Översätter...");
+        const r = await callBackend("text", input, null);
+        r._fetchedAt = new Date().toLocaleDateString("sv-SE");
+        setResult(r); setSrcUrl(null);
+      } else {
+        if (!url.trim()) throw new Error("Ange en URL.");
+        setStatus("Hämtar och översätter...");
+        const r = await callBackend("url", null, url.trim());
+        r._fetchedAt = new Date().toLocaleDateString("sv-SE");
+        setResult(r); setSrcUrl(url.trim());
+      }
+      setStatus("");
+    } catch(e) { setStatus(e.message); }
+    finally { setBusy(false); }
+  }
+
+  function copyRecipe() {
+    if (!result) return;
+    const text = buildPlainText(result, srcUrl);
+    const ok = () => { setCopied(true); setTimeout(() => setCopied(false), 2500); };
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(ok).catch(fb);
+    } else { fb(); }
+    function fb() {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.style.cssText = "position:fixed;opacity:0";
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      document.execCommand("copy"); document.body.removeChild(ta); ok();
+    }
+  }
+
+  const m = result?.meta||{};
+  const chips = [m.portioner, m.totaltid&&"Totalt: "+m.totaltid, m.svarighetsgrad].filter(Boolean);
+
+  return (
+    <div style={{background:CR,minHeight:"100vh",paddingBottom:100}}>
+
+      {/* Header */}
+      <header style={{background:"#1c3028",borderBottom:"3px solid "+T}}>
+        <div style={{background:PA,borderBottom:"1px solid "+BO,padding:"4px 0 0",overflow:"hidden"}}>
+          <SumiIllustration />
+        </div>
+        <div style={{padding:"22px 36px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+          <div>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+              <div style={{width:28,height:2,background:T,borderRadius:2}}/>
+              <span style={{color:"rgba(237,230,214,0.45)",fontSize:9,letterSpacing:"0.22em",textTransform:"uppercase",fontFamily:"'Gill Sans','Trebuchet MS',sans-serif"}}>
+                Recept &amp; K&#246;ks&#246;vers&#228;ttning
+              </span>
+            </div>
+            <h1 style={{margin:0,lineHeight:1,fontFamily:"'Palatino Linotype','Book Antiqua','Palatino','Georgia',serif",fontWeight:400}}>
+              <span style={{fontSize:"clamp(32px,5.5vw,52px)",color:CR}}>Recept</span>
+              <span style={{fontSize:"clamp(32px,5.5vw,52px)",color:G,fontStyle:"italic"}}>&#246;vers&#228;ttaren</span>
+            </h1>
+          </div>
+          <button onClick={()=>setShowInfo(v=>!v)} style={{background:"transparent",border:"1.5px solid rgba(201,168,76,0.4)",borderRadius:"50%",width:34,height:34,color:G,fontSize:16,fontWeight:700,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Georgia,serif",fontStyle:"italic",lineHeight:1}} title="Om Receptöversättaren">i</button>
+        </div>
+      </header>
+
+      {/* Info modal */}
+      {showInfo && (
+        <div onClick={()=>setShowInfo(false)} style={{position:"fixed",inset:0,background:"rgba(20,30,26,0.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:WA,borderRadius:10,border:"1px solid "+BO,maxWidth:520,width:"100%",boxShadow:"0 16px 48px rgba(0,0,0,0.25)",overflow:"hidden"}}>
+            <div style={{background:PA,padding:"14px 22px",borderBottom:"1px solid "+BO,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontFamily:"'Palatino Linotype','Palatino','Georgia',serif",fontStyle:"italic",fontSize:16,color:F}}>Om Recept&#246;vers&#228;ttaren</span>
+              <button onClick={()=>setShowInfo(false)} style={{background:"transparent",border:"none",color:MI,fontSize:22,cursor:"pointer",lineHeight:1,padding:"0 4px"}}>&times;</button>
+            </div>
+            <div style={{padding:"22px 26px",fontFamily:"sans-serif",fontSize:13,color:MI,lineHeight:1.8}}>
+              <p style={{margin:"0 0 14px"}}>H&#228;r kan du kopiera och klistra in dina engelskspråkiga favoritrecept och f&#229; dem &#246;versatta och anpassade till svenska (metriska) m&#229;tt.</p>
+              <p style={{margin:"0 0 14px"}}>Du kan b&#229;de klistra in kopierad text i f&#228;ltet d&#228;r exempelreceptet visas, eller trycka p&#229; <strong style={{color:F}}>"Webbadress (URL)"</strong> och klistra in webbadressen &#8212; s&#229; h&#228;mtar Recept&#246;vers&#228;ttaren receptet automatiskt.</p>
+              <p style={{margin:0,fontSize:12,color:"#9a9088",borderTop:"1px solid "+BO,paddingTop:14}}>Observera att det h&#228;r &#228;r en &#246;vers&#228;ttningstj&#228;nst f&#246;r privat bruk och att upphovsr&#228;tten (copyright) fortfarande tillh&#246;r originalk&#228;llan.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main content */}
+      <main style={{maxWidth:920,margin:"0 auto",padding:"36px 24px 0"}}>
+
+        {/* Tabs */}
+        <div style={{display:"flex",borderBottom:"2px solid "+BO,marginBottom:28}}>
+          {[["text","Klistra in text"],["url","Webbadress (URL)"]].map(([t,l])=>(
+            <button key={t} onClick={()=>{setTab(t);setStatus("");}} style={{padding:"11px 26px",border:"none",background:tab===t?PA:"transparent",fontFamily:"'Gill Sans','Trebuchet MS',sans-serif",fontSize:11,fontWeight:tab===t?700:500,letterSpacing:"0.12em",textTransform:"uppercase",color:tab===t?F:MI,borderBottom:"2px solid "+(tab===t?F:"transparent"),marginBottom:-2,cursor:"pointer",borderRadius:"4px 4px 0 0"}}>{l}</button>
+          ))}
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 236px",gap:24}}>
+
+          {/* Input panel */}
+          {tab==="text" ? (
+            <div style={{background:WA,borderRadius:8,border:"1px solid "+BO,boxShadow:"0 1px 8px rgba(45,74,62,0.06)",overflow:"hidden"}}>
+              <div style={{background:PA,padding:"9px 18px",borderBottom:"1px solid "+BO}}>
+                <span style={{fontFamily:"sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",color:MI}}>Originalrecept — engelska</span>
+              </div>
+              <textarea value={input} onChange={e=>setInput(e.target.value)} style={{width:"100%",minHeight:290,padding:"16px 20px",border:"none",background:"transparent",fontFamily:"'Georgia',serif",fontSize:13,lineHeight:1.85,resize:"vertical",outline:"none",color:"#6b6258",fontStyle:"italic",boxSizing:"border-box"}}/>
+            </div>
+          ) : (
+            <div style={{background:WA,borderRadius:8,border:"1px solid "+BO,padding:24,boxShadow:"0 1px 8px rgba(45,74,62,0.06)"}}>
+              <label style={{display:"block",fontFamily:"sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",color:MI,marginBottom:10}}>Receptets webbadress</label>
+              <input type="text" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://www.allrecipes.com/recipe/..." style={{width:"100%",padding:"12px 14px",border:"1px solid "+BO,borderRadius:6,fontFamily:"'Georgia',serif",fontSize:13,outline:"none",color:"#2a2a2a",marginBottom:18,boxSizing:"border-box",background:CR}}/>
+              <div style={{borderTop:"1px solid "+BO,paddingTop:16,fontFamily:"sans-serif",fontSize:12,color:MI,lineHeight:1.8}}>
+                <div style={{fontWeight:700,color:F,marginBottom:4,fontSize:11}}>Fungerar med:</div>
+                AllRecipes · Food Network · NYT Cooking<br/>Serious Eats · Epicurious · BBC Good Food
+              </div>
+            </div>
+          )}
+
+          {/* Sidebar */}
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            <div style={{background:WA,borderRadius:8,border:"1px solid "+BO,padding:"16px 18px",boxShadow:"0 1px 8px rgba(45,74,62,0.06)"}}>
+              <div style={{fontFamily:"'Palatino Linotype','Palatino','Georgia',serif",fontStyle:"italic",color:F,fontSize:15,marginBottom:12,paddingBottom:10,borderBottom:"1px solid "+BO}}>Konverteras</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"7px 12px"}}>
+                {[["cups","dl"],["oz","g"],["sticks","g"],["lbs","kg"],["°F","°C"],["tbsp","msk"],["tsp","tsk"],["pint","dl"],["inch","cm"],["gallon","L"]].map(([a,b])=>(
+                  <div key={a} style={{display:"flex",alignItems:"center",gap:5,fontFamily:"'Georgia',serif",fontSize:12,color:MI}}>
+                    <span style={{color:T}}>{a}</span>
+                    <span style={{color:BO,fontSize:8}}>&#9658;</span>
+                    <span style={{color:F}}>{b}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button onClick={translate} disabled={busy} style={{background:busy?"#7e9e96":F,color:CR,border:"none",borderRadius:6,padding:"15px 12px",fontFamily:"'Gill Sans','Trebuchet MS',sans-serif",fontSize:12,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",cursor:busy?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,boxShadow:busy?"none":"0 4px 16px rgba(45,74,62,0.3)"}}>
+              {busy
+                ? <><span style={{width:14,height:14,border:"2px solid rgba(237,230,214,0.3)",borderTopColor:CR,borderRadius:"50%",display:"inline-block",animation:"spin .7s linear infinite",flexShrink:0,boxSizing:"content-box"}}/>{status}</>
+                : "Översätt recept"}
+            </button>
+            {status&&!busy&&<div style={{background:"#fdf0ed",borderLeft:"3px solid "+T,borderRadius:"0 6px 6px 0",padding:"12px 14px",fontFamily:"sans-serif",fontSize:12,color:T,lineHeight:1.65}}>{status}</div>}
+          </div>
+        </div>
+
+        {/* Result */}
+        {result && (
+          <div style={{marginTop:48,background:WA,borderRadius:8,border:"1px solid "+BO,boxShadow:"0 4px 28px rgba(45,74,62,0.09)",overflow:"hidden"}}>
+            <div style={{background:PA,padding:"12px 24px",borderBottom:"1px solid "+BO,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+              <span style={{fontFamily:"'Palatino Linotype','Palatino','Georgia',serif",fontStyle:"italic",color:F,fontSize:14}}>Översatt recept</span>
+              <div style={{display:"flex",gap:10}}>
+                <button onClick={copyRecipe} style={{padding:"8px 18px",borderRadius:5,border:"1.5px solid "+F,background:copied?F:"transparent",color:copied?CR:F,fontFamily:"sans-serif",fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",cursor:"pointer"}}>{copied?"✓ Kopierat":"Kopiera text"}</button>
+                <button onClick={()=>generatePDF(result)} style={{padding:"8px 18px",borderRadius:5,border:"none",background:T,color:"#fff",fontFamily:"sans-serif",fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",cursor:"pointer",boxShadow:"0 2px 10px rgba(184,92,56,0.35)"}}>Ladda ner PDF</button>
+              </div>
+            </div>
+
+            <div style={{padding:"40px 48px"}}>
+              <div style={{display:"flex",alignItems:"flex-start",gap:16,marginBottom:6}}>
+                <div style={{width:4,minHeight:52,background:T,borderRadius:2,flexShrink:0,marginTop:4}}/>
+                <h2 style={{margin:0,fontFamily:"'Palatino Linotype','Book Antiqua','Palatino','Georgia',serif",fontSize:"clamp(24px,4vw,36px)",fontWeight:400,color:F,lineHeight:1.1}}>{result.titel}</h2>
+              </div>
+              {result.beskrivning&&<div style={{marginLeft:20,marginBottom:24,fontFamily:"'Georgia',serif",fontSize:14,color:MI,lineHeight:1.8,fontStyle:"italic",borderLeft:"2px solid "+G,paddingLeft:16}}>{result.beskrivning}</div>}
+              {chips.length>0&&<div style={{display:"inline-flex",border:"1px solid "+BO,borderRadius:6,overflow:"hidden",marginBottom:32}}>{chips.map((c,i)=><div key={i} style={{padding:"9px 20px",fontFamily:"sans-serif",fontSize:11,color:F,fontWeight:600,background:i%2===0?PA:WA,borderRight:i<chips.length-1?"1px solid "+BO:"none"}}>{c}</div>)}</div>}
+
+              <div style={{display:"flex",alignItems:"center",gap:14,margin:"0 0 18px"}}>
+                <span style={{fontFamily:"'Palatino Linotype','Palatino','Georgia',serif",fontStyle:"italic",fontSize:20,color:T,whiteSpace:"nowrap"}}>Ingredienser</span>
+                <div style={{flex:1,height:1,background:BO}}/>
+              </div>
+              <ul style={{listStyle:"none",padding:0,margin:"0 0 12px"}}>
+                {(result.ingredienser||[]).map((ing,i)=>{
+                  const grp=ing.grupp||"",prev=result.ingredienser[i-1];
+                  const newG=grp&&(!prev||(prev.grupp||"")!==grp);
+                  return newG
+                    ?<li key={"g"+i} style={{padding:"14px 0 4px",marginTop:4,fontFamily:"sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:T,borderTop:"1px solid "+BO}}>{grp}</li>
+                    :<li key={i} style={{display:"grid",gridTemplateColumns:"116px 1fr",padding:"8px 0",fontFamily:"sans-serif",fontSize:13,borderBottom:"1px dotted "+BO,alignItems:"baseline",gap:8}}>
+                      <span style={{fontWeight:700,color:F}}>{ing.mangd||""}</span>
+                      <span style={{color:"#2a2a2a"}}>{ing.ingrediens}</span>
+                    </li>;
+                })}
+              </ul>
+
+              <div style={{display:"flex",alignItems:"center",gap:14,margin:"32px 0 18px"}}>
+                <span style={{fontFamily:"'Palatino Linotype','Palatino','Georgia',serif",fontStyle:"italic",fontSize:20,color:T,whiteSpace:"nowrap"}}>Gör så här</span>
+                <div style={{flex:1,height:1,background:BO}}/>
+              </div>
+              <ol style={{listStyle:"none",padding:0,margin:0}}>
+                {(result.steg||[]).map((s,i)=>(
+                  <li key={i} style={{display:"flex",gap:18,marginBottom:18,fontFamily:"sans-serif",fontSize:13,lineHeight:1.85}}>
+                    <span style={{display:"flex",alignItems:"center",justifyContent:"center",minWidth:30,height:30,background:F,color:CR,borderRadius:"50%",fontSize:12,fontWeight:700,flexShrink:0,marginTop:1}}>{i+1}</span>
+                    <span style={{paddingTop:5,color:"#2a2a2a"}}>{s}</span>
+                  </li>
+                ))}
+              </ol>
+
+              {result.noteringar&&(
+                <>
+                  <div style={{display:"flex",alignItems:"center",gap:14,margin:"32px 0 16px"}}>
+                    <span style={{fontFamily:"'Palatino Linotype','Palatino','Georgia',serif",fontStyle:"italic",fontSize:18,color:MI,whiteSpace:"nowrap"}}>Tips &amp; noteringar</span>
+                    <div style={{flex:1,height:1,background:BO}}/>
+                  </div>
+                  <div style={{background:PA,borderLeft:"3px solid "+G,padding:"18px 22px",borderRadius:"0 6px 6px 0",fontFamily:"'Georgia',serif",fontSize:13,color:MI,lineHeight:1.8,fontStyle:"italic"}}>{result.noteringar}</div>
+                </>
+              )}
+
+              {(srcUrl||result._fetchedAt)&&(
+                <div style={{marginTop:32,paddingTop:14,borderTop:"1px dotted "+BO,fontFamily:"sans-serif",fontSize:11,color:"#aaa098",lineHeight:1.7}}>
+                  <span style={{fontWeight:600,letterSpacing:"0.05em"}}>Källa:&nbsp;</span>
+                  {srcUrl&&<a href={srcUrl} target="_blank" rel="noopener" style={{color:"#aaa098",textDecoration:"underline",textDecorationColor:"#c8bfb0"}}>{srcUrl}</a>}
+                  {result._fetchedAt&&<span>&nbsp;&nbsp;·&nbsp;&nbsp;{result._fetchedAt}</span>}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

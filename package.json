@@ -1,0 +1,6 @@
+{
+  "name": "receptoversattaren",
+  "version": "1.0.0",
+  "description": "Translates English recipes to Swedish with metric conversion",
+  "engines": { "node": ">=18" }
+}

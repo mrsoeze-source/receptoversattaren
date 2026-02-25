@@ -1,0 +1,9 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# Route /api/translate to the serverless function
+[[redirects]]
+  from = "/api/translate"
+  to   = "/.netlify/functions/translate"
+  status = 200
