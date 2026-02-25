@@ -1,23 +1,25 @@
 /**
- * Netlify Function: /api/translate  (Gemini-version – GRATIS)
- * Använder Google Gemini API: 1 500 anrop/dag, 15/minut – helt gratis.
+ * Netlify Function: /api/translate  (Groq-version – GRATIS, fungerar i Sverige/EU)
  *
- * Enda fil som skiljer sig från Anthropic-versionen.
- * Frontendfilen (index.html) är OFÖRÄNDRAD.
+ * Groq gratis-lager: ~14 400 anrop/dag, inget kreditkort, inga EU-spärrar.
+ * Datacenter i Helsinki – fungerar utmärkt från Sverige.
+ *
+ * ENDA fil som skiljer sig från tidigare versioner.
+ * public/index.html, netlify.toml och package.json är OFÖRÄNDRADE.
  *
  * POST body:
- *   { type: "text", content: "..." }   – klistrad text
- *   { type: "url",  url: "https://..." } – hämta sida + översätt
+ *   { type: "text", content: "..." }
+ *   { type: "url",  url: "https://..." }
  *
  * Svar:
  *   { ok: true,  recipe: { ... } }
  *   { ok: false, error: "..." }
  */
 
-const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent";
+// Groq använder OpenAI-kompatibelt API
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const MODEL    = "llama-3.3-70b-versatile"; // Bäst gratismodell hos Groq, bra på svenska
 
-// Rensa bort icke-ASCII-tecken som stör API-anropet
 function sanitize(s) {
   return String(s || "")
     .replace(/\u00b0/g, " degrees")
@@ -41,12 +43,12 @@ function buildPrompt(recipeText) {
   return (
     "Translate this recipe to Swedish. Convert all measurements to metric.\n" +
     METRIC + "\n\n" +
-    "Reply ONLY with raw JSON (no markdown, no extra text) matching this schema:\n" +
+    "Reply ONLY with raw JSON (no markdown, no explanation) matching this exact schema:\n" +
     SCHEMA + "\n\nRECIPE:\n" + recipeText.slice(0, 12000)
   );
 }
 
-// Hämtar en webbsida server-side (inga CORS-problem här, till skillnad fran webbläsaren)
+// Hämta webbsida server-side (inga CORS-problem i en Netlify function)
 async function fetchPageText(url) {
   const res = await fetch(url, {
     headers: {
@@ -57,7 +59,6 @@ async function fetchPageText(url) {
   });
   if (!res.ok) throw new Error("Kunde inte hämta sidan: HTTP " + res.status);
   const html = await res.text();
-  // Strippa HTML-taggar till ren text
   return html
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
@@ -65,7 +66,7 @@ async function fetchPageText(url) {
     .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
     .replace(/\s{2,}/g, " ").trim()
-    .slice(0, 20000);
+    .slice(0, 15000);
 }
 
 function extractJSON(text) {
@@ -79,7 +80,7 @@ function extractJSON(text) {
 }
 
 function validateRecipe(obj) {
-  if (!obj || typeof obj !== "object") throw new Error("Svaret ar inte ett receptobjekt.");
+  if (!obj || typeof obj !== "object") throw new Error("Svaret är inte ett receptobjekt.");
   if (!obj.titel?.trim()) throw new Error("Receptet saknar titel.");
   if (!Array.isArray(obj.ingredienser) || !obj.ingredienser.length) throw new Error("Receptet saknar ingredienser.");
   if (!Array.isArray(obj.steg) || !obj.steg.length) throw new Error("Receptet saknar steg.");
@@ -96,34 +97,36 @@ function validateRecipe(obj) {
   return obj;
 }
 
-async function callGemini(prompt) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY saknas i Netlify-miljövariabler.");
+async function callGroq(prompt) {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error("GROQ_API_KEY saknas i Netlify-miljövariabler.");
 
-  const res = await fetch(GEMINI_URL + "?key=" + apiKey, {
+  const res = await fetch(GROQ_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + apiKey,
+    },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.2,       // Låg temperatur = mer förutsägbar JSON-utmatning
-        maxOutputTokens: 2500,
-      },
+      model: MODEL,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+      max_tokens: 2500,
     }),
   });
 
   const data = await res.json();
 
-  // Gemini-specifika felkoder
   if (!res.ok) {
-    const msg = data?.error?.message || "Gemini API-fel " + res.status;
-    // Hjälpsamt meddelande vid gratisgräns
-    if (res.status === 429) throw new Error("Gratisgränsen nådd (15/minut eller 1500/dag). Försök igen om en minut.");
+    const msg = data?.error?.message || "Groq API-fel " + res.status;
+    if (res.status === 429) {
+      throw new Error("Gratisgränsen nådd tillfälligt. Vänta en minut och försök igen.");
+    }
     throw new Error(msg);
   }
 
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("Tomt svar från Gemini.");
+  const text = data?.choices?.[0]?.message?.content;
+  if (!text) throw new Error("Tomt svar från Groq.");
   return text;
 }
 
@@ -141,7 +144,6 @@ exports.handler = async (event) => {
 
     const { type, content, url } = body;
 
-    // Validera indata
     if (type === "text") {
       if (!content || content.trim().length < 20)
         return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "Recepttexten är för kort." }) };
@@ -155,7 +157,6 @@ exports.handler = async (event) => {
     }
 
     let recipeText;
-
     if (type === "url") {
       recipeText = await fetchPageText(url);
       if (recipeText.length < 100) throw new Error("Sidan verkar tom eller kunde inte läsas.");
@@ -163,13 +164,13 @@ exports.handler = async (event) => {
       recipeText = sanitize(content);
     }
 
-    const responseText = await callGemini(buildPrompt(recipeText));
+    const responseText = await callGroq(buildPrompt(recipeText));
     const recipe = validateRecipe(extractJSON(responseText));
 
     return { statusCode: 200, headers, body: JSON.stringify({ ok: true, recipe }) };
 
   } catch (err) {
-    console.error("[translate-gemini]", err.message);
+    console.error("[translate-groq]", err.message);
     return { statusCode: 500, headers, body: JSON.stringify({ ok: false, error: err.message }) };
   }
 };
