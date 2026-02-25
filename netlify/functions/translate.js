@@ -15,7 +15,7 @@
  */
 
 const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
 
 // Rensa bort icke-ASCII-tecken som stör API-anropet
 function sanitize(s) {
