@@ -199,9 +199,10 @@ function App(){
   const [tab,    setTab]    = useState("text");
   const [input,  setInput]  = useState(EXAMPLE);
   const [url,    setUrl]    = useState("");
-  const [imgB64, setImgB64] = useState(null);
-  const [imgSrc, setImgSrc] = useState(null);
-  const [tLang,  setTLang]  = useState("Swedish");
+  const [imgB64,  setImgB64]  = useState(null);
+  const [imgMime, setImgMime] = useState("image/jpeg");
+  const [imgSrc,  setImgSrc]  = useState(null);
+  const [tLang,   setTLang]   = useState("Swedish");
   const [sLang,  setSLang]  = useState("auto");
   const [result, setResult] = useState(null);
   const [srcUrl, setSrcUrl] = useState(null);
@@ -223,10 +224,31 @@ function App(){
 
   function loadImg(file){
     if(!file||!file.type.startsWith("image/")){setStatus("Bara bildfiler (JPG, PNG, HEIC).");return;}
-    if(file.size>8000000){setStatus("Max 8 MB.");return;}
-    const r=new FileReader();
-    r.onload=e=>{const du=e.target.result;setImgSrc(du);setImgB64(du.split(",")[1]);setStatus("");};
-    r.readAsDataURL(file);
+    if(file.size>20000000){setStatus("Max 20 MB.");return;}
+    setStatus("Förbereder bild...");
+    const reader=new FileReader();
+    reader.onload=function(e){
+      const original=e.target.result;
+      setImgSrc(original);
+      const img=new Image();
+      img.onload=function(){
+        const MAX=1600;
+        let w=img.width, h=img.height;
+        if(w>MAX||h>MAX){const s=MAX/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}
+        const canvas=document.createElement("canvas");
+        canvas.width=w;canvas.height=h;
+        canvas.getContext("2d").drawImage(img,0,0,w,h);
+        const compressed=canvas.toDataURL("image/jpeg",0.85);
+        const b64=compressed.split(",")[1];
+        if(b64.length>3500000){setStatus("Bilden är för stor även efter komprimering. Försök med lägre upplösning.");return;}
+        setImgB64(b64);
+        setImgMime("image/jpeg");
+        setStatus("");
+      };
+      img.onerror=function(){setStatus("Kunde inte läsa bilden.");};
+      img.src=original;
+    };
+    reader.readAsDataURL(file);
   }
 
   async function translate(){
@@ -246,7 +268,7 @@ function App(){
       }else{
         if(!imgB64)throw new Error("Ladda upp ett foto först.");
         setStatus("Läser foto…");
-        recipe=await callBackend({type:"image",image:imgB64,targetLanguage:tLang});
+        recipe=await callBackend({type:"image",image:imgB64,imageMime:imgMime,targetLanguage:tLang});
         setSrcUrl(null);
       }
       recipe._fetchedAt=new Date().toLocaleDateString("sv-SE");
