@@ -111,11 +111,15 @@ function buildUserPrompt(recipeText, targetLanguage, sourceLanguage) {
 function buildImagePrompt(targetLanguage) {
   const lang = targetLanguage || "Swedish";
   return (
-    `This image contains a recipe (possibly handwritten, printed, or from a cookbook). ` +
-    `Read the entire recipe from the image, then translate it to ${lang} and convert all measurements to metric.\n\n` +
-    `Measurement conversions: 1 cup=2.4dl, 1/2 cup=1.2dl, 1 tbsp=1 tablespoon in ${lang}, 1 tsp=1 teaspoon, ` +
-    `1 lb=450g, 1 oz=28g. Temperature: 350F=175C, 400F=200C, 425F=220C, 450F=230C.\n\n` +
-    `Return ONLY a single JSON object — no markdown, no explanation:\n` +
+    `TASK: Read the recipe in this image and output it FULLY TRANSLATED to ${lang}.\n` +
+    `The entire output — every word in every field — MUST be in ${lang}. ` +
+    `Do NOT keep any text in the original language. ` +
+    `Translate ingredient names, technique descriptions, and all instructions to ${lang}.\n\n` +
+    `Also convert all measurements to metric:\n` +
+    `1 cup=2.4dl | 1/2 cup=1.2dl | 1/4 cup=0.6dl | 1 tbsp=1 msk | 1 tsp=1 tsk | ` +
+    `1 lb=450g | 1 oz=28g | 350F=175C | 400F=200C | 425F=220C | 450F=230C\n\n` +
+    `Return ONLY a single raw JSON object (no markdown, no preamble) in this exact schema.\n` +
+    `ALL string values must be written in ${lang}:\n` +
     SCHEMA
   );
 }
@@ -236,13 +240,16 @@ exports.handler = async (event) => {
       const responseText = await callGroq({
         model: VISION_MODEL,
         useJsonMode: true,
-        messages: [{
-          role: "user",
-          content: [
-            { type: "image_url", image_url: { url: `data:${imageMime||"image/jpeg"};base64,${image}` } },
-            { type: "text", text: imagePrompt },
-          ],
-        }],
+        messages: [
+          { role: "system", content: buildSystemPrompt(tLang) },
+          {
+            role: "user",
+            content: [
+              { type: "image_url", image_url: { url: `data:${imageMime||"image/jpeg"};base64,${image}` } },
+              { type: "text", text: imagePrompt },
+            ],
+          }
+        ],
       });
 
       const recipe = validateRecipe(extractJSON(responseText));
