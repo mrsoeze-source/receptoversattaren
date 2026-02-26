@@ -221,7 +221,7 @@ exports.handler = async (event) => {
     try { body = JSON.parse(event.body || "{}"); }
     catch { return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "Invalid JSON body" }) }; }
 
-    const { type, content, url, image, targetLanguage, sourceLanguage } = body;
+    const { type, content, url, image, imageMime, targetLanguage, sourceLanguage } = body;
     const tLang = (targetLanguage || "Swedish").trim();
     const sLang = sourceLanguage || "auto";
 
@@ -229,8 +229,8 @@ exports.handler = async (event) => {
     if (type === "image") {
       if (!image || image.length < 100)
         return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "No image received." }) };
-      if (image.length > 7_000_000) // ~5MB base64
-        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "Image too large (max 4 MB)." }) };
+      if (image.length > 4_000_000) // Frontend compresses to ~1600px JPEG before sending
+        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "Bilden är för stor. Försök med ett foto med lägre upplösning." }) };
 
       const imagePrompt = buildImagePrompt(tLang);
       const responseText = await callGroq({
@@ -239,7 +239,7 @@ exports.handler = async (event) => {
         messages: [{
           role: "user",
           content: [
-            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } },
+            { type: "image_url", image_url: { url: `data:${imageMime||"image/jpeg"};base64,${image}` } },
             { type: "text", text: imagePrompt },
           ],
         }],
