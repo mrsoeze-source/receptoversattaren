@@ -3,27 +3,50 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Recept&#246;vers&#228;ttaren</title>
+  <title>Receptöversättaren</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
-    body { margin: 0; background: #f5f0e8; }
+    body { margin: 0; background: #f5f0e8; font-family: sans-serif; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @media print { button { display: none !important; } }
+    .info-btn:hover { background: rgba(201,168,76,0.18) !important; transform: scale(1.05); }
+    .info-btn { transition: background .15s, transform .1s; }
+    .img-slot:hover { border-color: #2d4a3e !important; }
+    .tog-btn { transition: background .15s, color .15s; }
+    .lang-opt:hover { background: #ede6d6 !important; }
   </style>
 </head>
 <body>
 <div id="root"></div>
 <script>
-// ── Shorthand ─────────────────────────────────────────────────────────────────
 const h = React.createElement;
 const { useState, useEffect, useRef } = React;
 
-// ── PDF generator ─────────────────────────────────────────────────────────────
-function pdfEncode(s) {
+// ── i18n data ─────────────────────────────────────────────────────────────────
+const UI_STRINGS={"sv": {"langName": "Svenska", "subtitle": "Receptöversättning & måttomvandling", "infoBtn": "Om tjänsten", "infoTitle": "Om Receptöversättaren", "infoWelcome": "Välkommen till Receptöversättaren!", "infoP1": "Här kan du översätta ett recept från ett valfritt språk till ett annat valfritt språk.", "infoP2": "Välj om du vill översätta ett recept från en kopierad text, genom att ange en adress till en webbsida (URL) eller fotografera en sida i en kokbok och ladda upp fotot.", "infoP3": "Välj också om du vill ha mått i metriska enheter (standard) eller i imperial units.", "infoFooter": "Kom ihåg att Receptöversättaren är en ren översättningstjänst och att du bara får använda översättningen för privat bruk.", "tabText": "Klistra in text", "tabUrl": "Webbadress (URL)", "tabImg": "Foto 📷", "toLang": "Översätt till", "fromLang": "Originalspråk", "autoDetect": "Automatisk igenkänning", "unitsLabel": "Måttenheter", "metric": "Metriska (dl, g, °C)", "imperial": "Imperial (cups, oz, °F)", "pasteLabel": "Originalrecept — valfritt språk", "clear": "Rensa", "urlLabel": "Receptets webbadress", "worksWith": "Fungerar med:", "imgSlotFirst": "Tryck eller dra hit ett foto", "imgSlotAdd": "Lägg till foto", "imgFormat": "JPG · PNG · HEIC · Max 1200×1200px", "imgCount1": " av ", "imgCount2": " bilder tillagda", "imgCountMore": " — du kan lägga till fler", "imgTipLabel": "Tips: ", "imgTip": "Fungerar med kokbokssidor, handskrivna recept och menyer — på vilket språk som helst. Ladda upp flera bilder om receptet är längre.", "converts": "Konverteras", "btnTranslate": "Översätt recept", "btnImg": "📷 Läs och översätt", "copyBtn": "Kopiera text", "copiedBtn": "✓ Kopierat", "pdfBtn": "Ladda ner PDF", "resultFrom": "Översatt recept — från", "resultTo": "till", "resultPrefix": "Översatt recept —", "scaleLabel": "Skala:", "ingredients": "Ingredienser", "steps": "Gör så här", "notes": "Tips & noteringar", "source": "Källa: ", "siteTitle": "Receptöversättaren"}, "en": {"langName": "English", "subtitle": "Recipe Translation & Measurement Conversion", "infoBtn": "About", "infoTitle": "About the Recipe Translator", "infoWelcome": "Welcome to the Recipe Translator!", "infoP1": "Here you can translate a recipe from any language to any other language.", "infoP2": "Choose whether to translate from pasted text, by entering a web address (URL), or by photographing a cookbook page and uploading the photo.", "infoP3": "Also choose whether you want measurements in metric units (default) or imperial units.", "infoFooter": "Remember that the Recipe Translator is a pure translation service and that you may only use the translation for personal use.", "tabText": "Paste text", "tabUrl": "Web address (URL)", "tabImg": "Photo 📷", "toLang": "Translate to", "fromLang": "Original language", "autoDetect": "Auto-detect", "unitsLabel": "Measurement units", "metric": "Metric (dl, g, °C)", "imperial": "Imperial (cups, oz, °F)", "pasteLabel": "Original recipe — any language", "clear": "Clear", "urlLabel": "Recipe web address", "worksWith": "Works with:", "imgSlotFirst": "Tap or drag a photo here", "imgSlotAdd": "Add photo", "imgFormat": "JPG · PNG · HEIC · Max 1200×1200px", "imgCount1": " of ", "imgCount2": " photos added", "imgCountMore": " — you can add more", "imgTipLabel": "Tip: ", "imgTip": "Works with cookbook pages, handwritten recipes and menus — in any language. Upload multiple photos if the recipe is longer.", "converts": "Converts", "btnTranslate": "Translate recipe", "btnImg": "📷 Read & translate", "copyBtn": "Copy text", "copiedBtn": "✓ Copied", "pdfBtn": "Download PDF", "resultFrom": "Translated recipe — from", "resultTo": "to", "resultPrefix": "Translated recipe —", "scaleLabel": "Scale:", "ingredients": "Ingredients", "steps": "Instructions", "notes": "Tips & notes", "source": "Source: ", "siteTitle": "Recipe Translator"}, "da": {"langName": "Dansk", "subtitle": "Receptoversættelse & målomsætning", "infoBtn": "Om tjenesten", "infoTitle": "Om Receptoversætteren", "infoWelcome": "Velkommen til Receptoversætteren!", "infoP1": "Her kan du oversætte en opskrift fra et vilkårligt sprog til et andet vilkårligt sprog.", "infoP2": "Vælg om du vil oversætte en opskrift fra kopieret tekst, ved at angive en webadresse (URL) eller fotografere en side i en kogebog og uploade fotoet.", "infoP3": "Vælg også om du vil have mål i metriske enheder (standard) eller i imperial units.", "infoFooter": "Husk at Receptoversætteren er en ren oversættelsestjeneste, og at du kun må bruge oversættelsen til privat brug.", "tabText": "Indsæt tekst", "tabUrl": "Webadresse (URL)", "tabImg": "Foto 📷", "toLang": "Oversæt til", "fromLang": "Originalsprog", "autoDetect": "Automatisk genkendelse", "unitsLabel": "Måleenheder", "metric": "Metrisk (dl, g, °C)", "imperial": "Imperial (cups, oz, °F)", "pasteLabel": "Originalopskrift — valgfrit sprog", "clear": "Ryd", "urlLabel": "Opskriftens webadresse", "worksWith": "Fungerer med:", "imgSlotFirst": "Tryk eller træk et foto hertil", "imgSlotAdd": "Tilføj foto", "imgFormat": "JPG · PNG · HEIC · Max 1200×1200px", "imgCount1": " af ", "imgCount2": " fotos tilføjet", "imgCountMore": " — du kan tilføje flere", "imgTipLabel": "Tips: ", "imgTip": "Fungerer med kogebogssider, håndskrevne opskrifter og menuer — på alle sprog. Upload flere fotos hvis opskriften er længere.", "converts": "Omregnes", "btnTranslate": "Oversæt opskrift", "btnImg": "📷 Læs og oversæt", "copyBtn": "Kopiér tekst", "copiedBtn": "✓ Kopieret", "pdfBtn": "Download PDF", "resultFrom": "Oversat opskrift — fra", "resultTo": "til", "resultPrefix": "Oversat opskrift —", "scaleLabel": "Skaler:", "ingredients": "Ingredienser", "steps": "Sådan gør du", "notes": "Tips & bemærkninger", "source": "Kilde: ", "siteTitle": "Receptoversætteren"}, "no": {"langName": "Norsk", "subtitle": "Oppskriftoversettelse & målenhetkonvertering", "infoBtn": "Om tjenesten", "infoTitle": "Om Oppskriftoversetteren", "infoWelcome": "Velkommen til Oppskriftoversetteren!", "infoP1": "Her kan du oversette en oppskrift fra et valgfritt språk til et annet valgfritt språk.", "infoP2": "Velg om du vil oversette fra limt inn tekst, ved å oppgi en nettadresse (URL) eller fotografere en side i en kokebok og laste opp bildet.", "infoP3": "Velg også om du vil ha mål i metriske enheter (standard) eller i imperial units.", "infoFooter": "Husk at tjenesten er en ren oversettingstjeneste og at du bare kan bruke oversettelsen til privat bruk.", "tabText": "Lim inn tekst", "tabUrl": "Nettadresse (URL)", "tabImg": "Foto 📷", "toLang": "Oversett til", "fromLang": "Originalspråk", "autoDetect": "Automatisk gjenkjenning", "unitsLabel": "Måleenheter", "metric": "Metrisk (dl, g, °C)", "imperial": "Imperial (cups, oz, °F)", "pasteLabel": "Originaloppskrift — valgfritt språk", "clear": "Tøm", "urlLabel": "Oppskriftens nettadresse", "worksWith": "Fungerer med:", "imgSlotFirst": "Trykk eller dra et bilde hit", "imgSlotAdd": "Legg til bilde", "imgFormat": "JPG · PNG · HEIC · Maks 1200×1200px", "imgCount1": " av ", "imgCount2": " bilder lagt til", "imgCountMore": " — du kan legge til flere", "imgTipLabel": "Tips: ", "imgTip": "Fungerer med kokeboksider, håndskrevne oppskrifter og menyer — på alle språk. Last opp flere bilder hvis oppskriften er lengre.", "converts": "Konverteres", "btnTranslate": "Oversett oppskrift", "btnImg": "📷 Les og oversett", "copyBtn": "Kopier tekst", "copiedBtn": "✓ Kopiert", "pdfBtn": "Last ned PDF", "resultFrom": "Oversatt oppskrift — fra", "resultTo": "til", "resultPrefix": "Oversatt oppskrift —", "scaleLabel": "Skaler:", "ingredients": "Ingredienser", "steps": "Slik gjør du det", "notes": "Tips & merknader", "source": "Kilde: ", "siteTitle": "Oppskriftoversetteren"}, "fi": {"langName": "Suomi", "subtitle": "Reseptikääntäjä & mittayksiköiden muunnos", "infoBtn": "Tietoa", "infoTitle": "Tietoa reseptikääntäjästä", "infoWelcome": "Tervetuloa reseptikääntäjään!", "infoP1": "Täällä voit kääntää reseptin mistä tahansa kielestä mihin tahansa muuhun kieleen.", "infoP2": "Valitse haluatko kääntää kopioidusta tekstistä, syöttämällä verkkosivun osoitteen (URL) tai valokuvaamalla keittokirjan sivun ja lataamalla kuvan.", "infoP3": "Valitse myös haluatko mitat metrisinä yksikköinä (oletus) vai imperial-yksikköinä.", "infoFooter": "Muista, että tämä on pelkkä käännöspalvelu ja käännöstä saa käyttää vain yksityiseen käyttöön.", "tabText": "Liitä teksti", "tabUrl": "Verkko-osoite (URL)", "tabImg": "Kuva 📷", "toLang": "Käännä kielelle", "fromLang": "Alkuperäinen kieli", "autoDetect": "Automaattinen tunnistus", "unitsLabel": "Mittayksiköt", "metric": "Metriset (dl, g, °C)", "imperial": "Imperial (cups, oz, °F)", "pasteLabel": "Alkuperäinen resepti — mikä tahansa kieli", "clear": "Tyhjennä", "urlLabel": "Reseptin verkko-osoite", "worksWith": "Toimii:", "imgSlotFirst": "Napauta tai vedä kuva tähän", "imgSlotAdd": "Lisää kuva", "imgFormat": "JPG · PNG · HEIC · Max 1200×1200px", "imgCount1": " / ", "imgCount2": " kuvaa lisätty", "imgCountMore": " — voit lisätä lisää", "imgTipLabel": "Vinkki: ", "imgTip": "Toimii keittokirjasivujen, käsinkirjoitettujen reseptien ja menujen kanssa — millä tahansa kielellä. Lataa useita kuvia, jos resepti on pidempi.", "converts": "Muunnetaan", "btnTranslate": "Käännä resepti", "btnImg": "📷 Lue & käännä", "copyBtn": "Kopioi teksti", "copiedBtn": "✓ Kopioitu", "pdfBtn": "Lataa PDF", "resultFrom": "Käännetty resepti — kielestä", "resultTo": "kieleen", "resultPrefix": "Käännetty resepti —", "scaleLabel": "Skaalaa:", "ingredients": "Ainesosat", "steps": "Valmistus", "notes": "Vinkit & huomiot", "source": "Lähde: ", "siteTitle": "Reseptikääntäjä"}, "de": {"langName": "Deutsch", "subtitle": "Rezeptübersetzung & Maßumrechnung", "infoBtn": "Info", "infoTitle": "Über den Rezeptübersetzer", "infoWelcome": "Willkommen beim Rezeptübersetzer!", "infoP1": "Hier kannst du ein Rezept von einer beliebigen Sprache in eine andere übersetzen.", "infoP2": "Wähle, ob du aus eingefügtem Text, über eine Webadresse (URL) oder durch Fotografieren einer Kochbuchseite übersetzen möchtest.", "infoP3": "Wähle auch, ob du Maße in metrischen Einheiten (Standard) oder in Imperial Units haben möchtest.", "infoFooter": "Beachte, dass dies ein reiner Übersetzungsdienst ist und die Übersetzung nur für den privaten Gebrauch verwendet werden darf.", "tabText": "Text einfügen", "tabUrl": "Webadresse (URL)", "tabImg": "Foto 📷", "toLang": "Übersetzen nach", "fromLang": "Originalsprache", "autoDetect": "Automatische Erkennung", "unitsLabel": "Maßeinheiten", "metric": "Metrisch (dl, g, °C)", "imperial": "Imperial (cups, oz, °F)", "pasteLabel": "Originalrezept — beliebige Sprache", "clear": "Leeren", "urlLabel": "Webadresse des Rezepts", "worksWith": "Funktioniert mit:", "imgSlotFirst": "Foto tippen oder ablegen", "imgSlotAdd": "Foto hinzufügen", "imgFormat": "JPG · PNG · HEIC · Max 1200×1200px", "imgCount1": " von ", "imgCount2": " Fotos hinzugefügt", "imgCountMore": " — weitere möglich", "imgTipLabel": "Tipp: ", "imgTip": "Funktioniert mit Kochbuchseiten, handgeschriebenen Rezepten und Speisekarten — in jeder Sprache. Lade mehrere Fotos hoch, wenn das Rezept länger ist.", "converts": "Wird umgerechnet", "btnTranslate": "Rezept übersetzen", "btnImg": "📷 Lesen & übersetzen", "copyBtn": "Text kopieren", "copiedBtn": "✓ Kopiert", "pdfBtn": "PDF herunterladen", "resultFrom": "Übersetztes Rezept — von", "resultTo": "nach", "resultPrefix": "Übersetztes Rezept —", "scaleLabel": "Skalieren:", "ingredients": "Zutaten", "steps": "Zubereitung", "notes": "Tipps & Hinweise", "source": "Quelle: ", "siteTitle": "Rezeptübersetzer"}, "fr": {"langName": "Français", "subtitle": "Traduction de recettes & conversion des mesures", "infoBtn": "À propos", "infoTitle": "À propos du Traducteur de recettes", "infoWelcome": "Bienvenue sur le Traducteur de recettes !", "infoP1": "Ici, vous pouvez traduire une recette de n'importe quelle langue vers une autre langue.", "infoP2": "Choisissez si vous souhaitez traduire depuis un texte collé, une adresse web (URL) ou en photographiant une page de livre de cuisine.", "infoP3": "Choisissez également si vous souhaitez les mesures en unités métriques (par défaut) ou en unités impériales.", "infoFooter": "N'oubliez pas que ce service est un outil de traduction et que vous ne pouvez l'utiliser qu'à des fins personnelles.", "tabText": "Coller du texte", "tabUrl": "Adresse web (URL)", "tabImg": "Photo 📷", "toLang": "Traduire en", "fromLang": "Langue originale", "autoDetect": "Détection automatique", "unitsLabel": "Unités de mesure", "metric": "Métriques (dl, g, °C)", "imperial": "Impériales (cups, oz, °F)", "pasteLabel": "Recette originale — langue quelconque", "clear": "Effacer", "urlLabel": "Adresse web de la recette", "worksWith": "Fonctionne avec :", "imgSlotFirst": "Appuyez ou déposez une photo ici", "imgSlotAdd": "Ajouter une photo", "imgFormat": "JPG · PNG · HEIC · Max 1200×1200px", "imgCount1": " sur ", "imgCount2": " photos ajoutées", "imgCountMore": " — vous pouvez en ajouter", "imgTipLabel": "Conseil : ", "imgTip": "Fonctionne avec des pages de livres de cuisine, des recettes manuscrites et des menus — dans n'importe quelle langue. Téléchargez plusieurs photos si la recette est plus longue.", "converts": "Conversions", "btnTranslate": "Traduire la recette", "btnImg": "📷 Lire & traduire", "copyBtn": "Copier le texte", "copiedBtn": "✓ Copié", "pdfBtn": "Télécharger PDF", "resultFrom": "Recette traduite — de", "resultTo": "en", "resultPrefix": "Recette traduite —", "scaleLabel": "Échelle :", "ingredients": "Ingrédients", "steps": "Préparation", "notes": "Conseils & remarques", "source": "Source : ", "siteTitle": "Traducteur de recettes"}, "es": {"langName": "Español", "subtitle": "Traducción de recetas & conversión de medidas", "infoBtn": "Acerca de", "infoTitle": "Acerca del Traductor de recetas", "infoWelcome": "¡Bienvenido al Traductor de recetas!", "infoP1": "Aquí puedes traducir una receta de cualquier idioma a otro idioma.", "infoP2": "Elige si quieres traducir desde texto pegado, una dirección web (URL) o fotografiando una página de un libro de cocina.", "infoP3": "También elige si quieres las medidas en unidades métricas (predeterminado) o en unidades imperiales.", "infoFooter": "Recuerda que el Traductor de recetas es un servicio de traducción puro y que solo puedes usarlo para uso privado.", "tabText": "Pegar texto", "tabUrl": "Dirección web (URL)", "tabImg": "Foto 📷", "toLang": "Traducir a", "fromLang": "Idioma original", "autoDetect": "Detección automática", "unitsLabel": "Unidades de medida", "metric": "Métricas (dl, g, °C)", "imperial": "Imperial (cups, oz, °F)", "pasteLabel": "Receta original — cualquier idioma", "clear": "Borrar", "urlLabel": "Dirección web de la receta", "worksWith": "Funciona con:", "imgSlotFirst": "Toca o arrastra una foto aquí", "imgSlotAdd": "Añadir foto", "imgFormat": "JPG · PNG · HEIC · Máx. 1200×1200px", "imgCount1": " de ", "imgCount2": " fotos añadidas", "imgCountMore": " — puedes añadir más", "imgTipLabel": "Consejo: ", "imgTip": "Funciona con páginas de libros de cocina, recetas escritas a mano y menús — en cualquier idioma. Sube varias fotos si la receta es más larga.", "converts": "Se convierte", "btnTranslate": "Traducir receta", "btnImg": "📷 Leer & traducir", "copyBtn": "Copiar texto", "copiedBtn": "✓ Copiado", "pdfBtn": "Descargar PDF", "resultFrom": "Receta traducida — de", "resultTo": "a", "resultPrefix": "Receta traducida —", "scaleLabel": "Escala:", "ingredients": "Ingredientes", "steps": "Preparación", "notes": "Consejos & notas", "source": "Fuente: ", "siteTitle": "Traductor de recetas"}, "it": {"langName": "Italiano", "subtitle": "Traduzione di ricette & conversione delle misure", "infoBtn": "Info", "infoTitle": "Informazioni sul Traduttore di ricette", "infoWelcome": "Benvenuto nel Traduttore di ricette!", "infoP1": "Qui puoi tradurre una ricetta da qualsiasi lingua in un'altra lingua.", "infoP2": "Scegli se tradurre da testo incollato, inserendo un indirizzo web (URL) o fotografando una pagina di un libro di cucina.", "infoP3": "Scegli anche se vuoi le misure in unità metriche (predefinite) o in unità imperiali.", "infoFooter": "Ricorda che il Traduttore di ricette è un servizio di traduzione puro e che puoi utilizzarlo solo per uso privato.", "tabText": "Incolla testo", "tabUrl": "Indirizzo web (URL)", "tabImg": "Foto 📷", "toLang": "Traduci in", "fromLang": "Lingua originale", "autoDetect": "Rilevamento automatico", "unitsLabel": "Unità di misura", "metric": "Metriche (dl, g, °C)", "imperial": "Imperiali (cups, oz, °F)", "pasteLabel": "Ricetta originale — qualsiasi lingua", "clear": "Cancella", "urlLabel": "Indirizzo web della ricetta", "worksWith": "Funziona con:", "imgSlotFirst": "Tocca o trascina una foto qui", "imgSlotAdd": "Aggiungi foto", "imgFormat": "JPG · PNG · HEIC · Max 1200×1200px", "imgCount1": " di ", "imgCount2": " foto aggiunte", "imgCountMore": " — puoi aggiungerne altre", "imgTipLabel": "Suggerimento: ", "imgTip": "Funziona con pagine di libri di cucina, ricette scritte a mano e menu — in qualsiasi lingua. Carica più foto se la ricetta è più lunga.", "converts": "Si converte", "btnTranslate": "Traduci ricetta", "btnImg": "📷 Leggi & traduci", "copyBtn": "Copia testo", "copiedBtn": "✓ Copiato", "pdfBtn": "Scarica PDF", "resultFrom": "Ricetta tradotta — da", "resultTo": "in", "resultPrefix": "Ricetta tradotta —", "scaleLabel": "Scala:", "ingredients": "Ingredienti", "steps": "Preparazione", "notes": "Consigli & note", "source": "Fonte: ", "siteTitle": "Traduttore di ricette"}, "nl": {"langName": "Nederlands", "subtitle": "Receptvertaling & maateenheden omzetten", "infoBtn": "Over", "infoTitle": "Over de Receptvertaler", "infoWelcome": "Welkom bij de Receptvertaler!", "infoP1": "Hier kun je een recept van elke taal naar een andere taal vertalen.", "infoP2": "Kies of je een recept wilt vertalen vanuit geplakte tekst, via een webadres (URL) of door een kookboekpagina te fotograferen.", "infoP3": "Kies ook of je maten in metrische eenheden (standaard) of in imperial units wilt hebben.", "infoFooter": "Onthoud dat de Receptvertaler een puur vertaalservice is en dat je het vertaalde recept alleen voor privégebruik mag gebruiken.", "tabText": "Tekst plakken", "tabUrl": "Webadres (URL)", "tabImg": "Foto 📷", "toLang": "Vertaal naar", "fromLang": "Oorspronkelijke taal", "autoDetect": "Automatische herkenning", "unitsLabel": "Maateenheden", "metric": "Metrisch (dl, g, °C)", "imperial": "Imperiaal (cups, oz, °F)", "pasteLabel": "Origineel recept — elke taal", "clear": "Wissen", "urlLabel": "Webadres van het recept", "worksWith": "Werkt met:", "imgSlotFirst": "Tik of sleep een foto hier naartoe", "imgSlotAdd": "Foto toevoegen", "imgFormat": "JPG · PNG · HEIC · Max 1200×1200px", "imgCount1": " van ", "imgCount2": " foto's toegevoegd", "imgCountMore": " — je kunt er meer toevoegen", "imgTipLabel": "Tip: ", "imgTip": "Werkt met kookboekpagina's, handgeschreven recepten en menu's — in elke taal. Upload meerdere foto's als het recept langer is.", "converts": "Wordt omgezet", "btnTranslate": "Recept vertalen", "btnImg": "📷 Lezen & vertalen", "copyBtn": "Tekst kopiëren", "copiedBtn": "✓ Gekopieerd", "pdfBtn": "PDF downloaden", "resultFrom": "Vertaald recept — van", "resultTo": "naar", "resultPrefix": "Vertaald recept —", "scaleLabel": "Schalen:", "ingredients": "Ingrediënten", "steps": "Bereiding", "notes": "Tips & opmerkingen", "source": "Bron: ", "siteTitle": "Receptvertaler"}};
+const LANG_NAMES={"sv": {"Swedish": "svenska", "English": "engelska", "Danish": "danska", "Norwegian": "norska", "Finnish": "finska", "German": "tyska", "French": "franska", "Spanish": "spanska", "Italian": "italienska", "Dutch": "holländska", "Portuguese": "portugisiska", "Polish": "polska", "Russian": "ryska", "Greek": "grekiska", "Turkish": "turkiska", "Japanese": "japanska", "Chinese": "kinesiska", "Korean": "koreanska", "Thai": "thai", "Arabic": "arabiska", "Hindi": "hindi"}, "en": {"Swedish": "Swedish", "English": "English", "Danish": "Danish", "Norwegian": "Norwegian", "Finnish": "Finnish", "German": "German", "French": "French", "Spanish": "Spanish", "Italian": "Italian", "Dutch": "Dutch", "Portuguese": "Portuguese", "Polish": "Polish", "Russian": "Russian", "Greek": "Greek", "Turkish": "Turkish", "Japanese": "Japanese", "Chinese": "Chinese", "Korean": "Korean", "Thai": "Thai", "Arabic": "Arabic", "Hindi": "Hindi"}, "da": {"Swedish": "svensk", "English": "engelsk", "Danish": "dansk", "Norwegian": "norsk", "Finnish": "finsk", "German": "tysk", "French": "fransk", "Spanish": "spansk", "Italian": "italiensk", "Dutch": "hollandsk", "Portuguese": "portugisisk", "Polish": "polsk", "Russian": "russisk", "Greek": "græsk", "Turkish": "tyrkisk", "Japanese": "japansk", "Chinese": "kinesisk", "Korean": "koreansk", "Thai": "thai", "Arabic": "arabisk", "Hindi": "hindi"}, "no": {"Swedish": "svensk", "English": "engelsk", "Danish": "dansk", "Norwegian": "norsk", "Finnish": "finsk", "German": "tysk", "French": "fransk", "Spanish": "spansk", "Italian": "italiensk", "Dutch": "nederlandsk", "Portuguese": "portugisisk", "Polish": "polsk", "Russian": "russisk", "Greek": "gresk", "Turkish": "tyrkisk", "Japanese": "japansk", "Chinese": "kinesisk", "Korean": "koreansk", "Thai": "thai", "Arabic": "arabisk", "Hindi": "hindi"}, "fi": {"Swedish": "ruotsi", "English": "englanti", "Danish": "tanska", "Norwegian": "norja", "Finnish": "suomi", "German": "saksa", "French": "ranska", "Spanish": "espanja", "Italian": "italia", "Dutch": "hollanti", "Portuguese": "portugali", "Polish": "puola", "Russian": "venäjä", "Greek": "kreikka", "Turkish": "turkki", "Japanese": "japani", "Chinese": "kiina", "Korean": "korea", "Thai": "thai", "Arabic": "arabia", "Hindi": "hindi"}, "de": {"Swedish": "Schwedisch", "English": "Englisch", "Danish": "Dänisch", "Norwegian": "Norwegisch", "Finnish": "Finnisch", "German": "Deutsch", "French": "Französisch", "Spanish": "Spanisch", "Italian": "Italienisch", "Dutch": "Niederländisch", "Portuguese": "Portugiesisch", "Polish": "Polnisch", "Russian": "Russisch", "Greek": "Griechisch", "Turkish": "Türkisch", "Japanese": "Japanisch", "Chinese": "Chinesisch", "Korean": "Koreanisch", "Thai": "Thaiisch", "Arabic": "Arabisch", "Hindi": "Hindi"}, "fr": {"Swedish": "suédois", "English": "anglais", "Danish": "danois", "Norwegian": "norvégien", "Finnish": "finnois", "German": "allemand", "French": "français", "Spanish": "espagnol", "Italian": "italien", "Dutch": "néerlandais", "Portuguese": "portugais", "Polish": "polonais", "Russian": "russe", "Greek": "grec", "Turkish": "turc", "Japanese": "japonais", "Chinese": "chinois", "Korean": "coréen", "Thai": "thaï", "Arabic": "arabe", "Hindi": "hindi"}, "es": {"Swedish": "sueco", "English": "inglés", "Danish": "danés", "Norwegian": "noruego", "Finnish": "finlandés", "German": "alemán", "French": "francés", "Spanish": "español", "Italian": "italiano", "Dutch": "neerlandés", "Portuguese": "portugués", "Polish": "polaco", "Russian": "ruso", "Greek": "griego", "Turkish": "turco", "Japanese": "japonés", "Chinese": "chino", "Korean": "coreano", "Thai": "tailandés", "Arabic": "árabe", "Hindi": "hindi"}, "it": {"Swedish": "svedese", "English": "inglese", "Danish": "danese", "Norwegian": "norvegese", "Finnish": "finlandese", "German": "tedesco", "French": "francese", "Spanish": "spagnolo", "Italian": "italiano", "Dutch": "olandese", "Portuguese": "portoghese", "Polish": "polacco", "Russian": "russo", "Greek": "greco", "Turkish": "turco", "Japanese": "giapponese", "Chinese": "cinese", "Korean": "coreano", "Thai": "tailandese", "Arabic": "arabo", "Hindi": "hindi"}, "nl": {"Swedish": "Zweeds", "English": "Engels", "Danish": "Deens", "Norwegian": "Noors", "Finnish": "Fins", "German": "Duits", "French": "Frans", "Spanish": "Spaans", "Italian": "Italiaans", "Dutch": "Nederlands", "Portuguese": "Portugees", "Polish": "Pools", "Russian": "Russisch", "Greek": "Grieks", "Turkish": "Turks", "Japanese": "Japans", "Chinese": "Chinees", "Korean": "Koreaans", "Thai": "Thais", "Arabic": "Arabisch", "Hindi": "Hindi"}};
+
+const UI_LANG_LIST=[
+  {code:"sv",flag:"🇸🇪"},{code:"en",flag:"🇬🇧"},{code:"da",flag:"🇩🇰"},{code:"no",flag:"🇳🇴"},
+  {code:"fi",flag:"🇫🇮"},{code:"de",flag:"🇩🇪"},{code:"fr",flag:"🇫🇷"},
+  {code:"es",flag:"🇪🇸"},{code:"it",flag:"🇮🇹"},{code:"nl",flag:"🇳🇱"},
+];
+
+function detectUiLang(){
+  const nav=(navigator.languages&&navigator.languages[0])||navigator.language||"sv";
+  const code=nav.toLowerCase().split("-")[0];
+  const map={"sv":"sv","en":"en","da":"da","no":"no","nb":"no","nn":"no","fi":"fi",
+              "de":"de","fr":"fr","es":"es","it":"it","nl":"nl"};
+  return map[code]||"sv";
+}
+
+// ── PDF ───────────────────────────────────────────────────────────────────────
+function pdfEncode(s){
   return String(s||"").replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)")
-    .split("").map(c=>{const n=c.charCodeAt(0);if(n<32)return" ";if(n>255)return"?";if(n>127)return"\\"+n.toString(8).padStart(3,"0");return c;}).join("");
+    .split("").map(c=>{const n=c.charCodeAt(0);if(n<32)return" ";if(n>255)return"?";
+    if(n>127)return"\\"+n.toString(8).padStart(3,"0");return c;}).join("");
 }
 function wrapText(text,fontSize){
   const max=Math.floor(495/(fontSize*0.55));
@@ -32,46 +55,46 @@ function wrapText(text,fontSize){
   for(const w of words){const t=line?line+" "+w:w;if(t.length>max&&line){lines.push(line);line=w;}else line=t;}
   if(line)lines.push(line);return lines.length?lines:[""];
 }
-function generatePDF(recipe){
+function generatePDF(recipe,T){
   const PW=595,PH=842,M=55;const items=[];
-  const add=(text,size,bold,color,indent,spaceBefore)=>items.push({text:text||"",size:size||11,bold:!!bold,color:color||[30,30,30],indent:indent||0,spaceBefore:spaceBefore||0});
+  const add=(text,size,bold,color,indent,sb)=>items.push({text:text||"",size:size||11,bold:!!bold,color:color||[30,30,30],indent:indent||0,spaceBefore:sb||0});
   add(recipe.titel||"Recept",20,true,[45,74,62],0,0);
   if(recipe.beskrivning)add(recipe.beskrivning,10,false,[107,98,88],0,8);
   const mt=recipe.meta||{};
   const ms=[mt.portioner,mt.totaltid&&"Totalt: "+mt.totaltid,mt.svarighetsgrad].filter(Boolean).join("   |   ");
   if(ms)add(ms,9,false,[130,120,110],0,6);
-  add("",8);add("Ingredienser",13,true,[184,92,56],0,4);
+  add("",8);add(T.ingredients,13,true,[184,92,56],0,4);
   let lg="";
   for(const ing of(recipe.ingredienser||[])){
     if(ing.grupp&&ing.grupp!==lg){add(ing.grupp.toUpperCase(),8,true,[107,98,88],0,8);lg=ing.grupp;}
     add("- "+(ing.mangd?ing.mangd+"   ":"")+(ing.ingrediens||""),10,false,[30,30,30],8,0);
   }
-  add("",8);add("Gor sa har",13,true,[184,92,56],0,4);
+  add("",8);add(T.steps,13,true,[184,92,56],0,4);
   (recipe.steg||[]).forEach((s,i)=>add((i+1)+".  "+s,10,false,[30,30,30],8,4));
-  if(recipe.noteringar){add("",8);add("Tips",11,true,[184,92,56],0,0);add(recipe.noteringar,10,false,[107,98,88],8,4);}
+  if(recipe.noteringar){add("",8);add(T.notes,11,true,[184,92,56],0,0);add(recipe.noteringar,10,false,[107,98,88],8,4);}
   const allOps=[];let pi=0,y=PH-M;
   for(const item of items){y-=item.spaceBefore;if(y<M){pi++;y=PH-M;}if(!item.text)continue;
     for(const line of wrapText(item.text,item.size)){const lh=item.size*1.5;if(y-lh<M){pi++;y=PH-M;}
       const col=item.color;allOps.push({pi,x:M+item.indent,y,text:pdfEncode(line),size:item.size,bold:item.bold,r:col[0],g:col[1],b:col[2]});y-=lh;}}
-  const numPages=pi+1;
-  const streams=Array.from({length:numPages},(_,p)=>allOps.filter(op=>op.pi===p).map(op=>{
+  const nP=pi+1;
+  const streams=Array.from({length:nP},(_,p)=>allOps.filter(op=>op.pi===p).map(op=>{
     const r=(op.r/255).toFixed(3),g=(op.g/255).toFixed(3),b=(op.b/255).toFixed(3);
     return r+" "+g+" "+b+" rg\nBT\n/"+(op.bold?"F2":"F1")+" "+op.size+" Tf\n"+op.x+" "+op.y+" Td\n("+op.text+") Tj\nET\n";
   }).join(""));
-  const pageRefs=Array.from({length:numPages},(_,p)=>(5+p*2)+" 0 R").join(" ");
+  const pR=Array.from({length:nP},(_,p)=>(5+p*2)+" 0 R").join(" ");
   const objs={};
   objs[1]="<< /Type /Catalog /Pages 2 0 R >>";
-  objs[2]="<< /Type /Pages /Kids ["+pageRefs+"] /Count "+numPages+" >>";
+  objs[2]="<< /Type /Pages /Kids ["+pR+"] /Count "+nP+" >>";
   objs[3]="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
   objs[4]="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
-  for(let p=0;p<numPages;p++){
+  for(let p=0;p<nP;p++){
     objs[5+p*2]="<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+PW+" "+PH+"]\n/Contents "+(6+p*2)+" 0 R\n/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>";
     objs[6+p*2]="<< /Length "+streams[p].length+" >>\nstream\n"+streams[p]+"\nendstream";}
-  const totalObjs=5+numPages*2;let pdf="%PDF-1.4\n";const offsets={};
-  for(let i=1;i<totalObjs;i++){offsets[i]=pdf.length;pdf+=i+" 0 obj\n"+objs[i]+"\nendobj\n";}
-  const xrefAt=pdf.length;pdf+="xref\n0 "+totalObjs+"\n0000000000 65535 f \n";
-  for(let i=1;i<totalObjs;i++)pdf+=String(offsets[i]).padStart(10,"0")+" 00000 n \n";
-  pdf+="trailer\n<< /Size "+totalObjs+" /Root 1 0 R >>\nstartxref\n"+xrefAt+"\n%%EOF";
+  const tot=5+nP*2;let pdf="%PDF-1.4\n";const off={};
+  for(let i=1;i<tot;i++){off[i]=pdf.length;pdf+=i+" 0 obj\n"+objs[i]+"\nendobj\n";}
+  const xAt=pdf.length;pdf+="xref\n0 "+tot+"\n0000000000 65535 f \n";
+  for(let i=1;i<tot;i++)pdf+=String(off[i]).padStart(10,"0")+" 00000 n \n";
+  pdf+="trailer\n<< /Size "+tot+" /Root 1 0 R >>\nstartxref\n"+xAt+"\n%%EOF";
   const blob=new Blob([pdf],{type:"application/pdf"});const burl=URL.createObjectURL(blob);
   const a=document.createElement("a");a.href=burl;
   a.download=(recipe.titel||"recept").replace(/[^a-z0-9]/gi,"-").toLowerCase()+".pdf";
@@ -79,35 +102,60 @@ function generatePDF(recipe){
   setTimeout(()=>URL.revokeObjectURL(burl),1000);
 }
 
-// ── API call ──────────────────────────────────────────────────────────────────
+// ── Backend ───────────────────────────────────────────────────────────────────
 async function callBackend(payload){
   const res=await fetch("/api/translate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
   const data=await res.json();
-  if(!data.ok)throw new Error(data.error||"Serverfel "+res.status);
+  if(!data.ok)throw new Error(data.error||"Server error "+res.status);
   return data.recipe;
 }
 
-function buildPlainText(result,srcUrl){
+// ── Portion scaling ───────────────────────────────────────────────────────────
+function formatScaledNum(n){
+  if(n<=0)return"0";
+  const whole=Math.floor(n),frac=n-whole;
+  const fracs=[[0.25,"¼"],[0.33,"⅓"],[0.5,"½"],[0.67,"⅔"],[0.75,"¾"]];
+  for(const [v,s] of fracs){if(Math.abs(frac-v)<0.07)return whole>0?whole+" "+s:s;}
+  if(Math.abs(n-Math.round(n))<0.05)return String(Math.round(n));
+  return (Math.round(n*10)/10).toString().replace(".",",");
+}
+function scaleAmount(mangd,factor){
+  if(!mangd||factor===1)return mangd;
+  return mangd.replace(/\d+(?:[.,]\d+)?(?:\/\d+)?/g,(m)=>{
+    let val;
+    if(m.includes("/")){const p=m.split("/");val=parseFloat(p[0])/parseFloat(p[1]);}
+    else val=parseFloat(m.replace(",","."));
+    if(isNaN(val))return m;
+    return formatScaledNum(val*factor);
+  });
+}
+function scalePortioner(str,factor){
+  if(!str)return str;
+  return str.replace(/\d+/,n=>Math.round(parseInt(n)*factor));
+}
+function buildPlainText(result,srcUrl,scale,T){
   const m=result.meta||{};
   let t=(result.titel||"")+"\n";
   if(result.beskrivning)t+=result.beskrivning+"\n";
-  [m.portioner,m.totaltid,m.svarighetsgrad].filter(Boolean).forEach(v=>t+=v+"   ");
-  t+="\n\nINGREDIENSER\n";let lg="";
+  const port=scale!==1&&m.portioner?scalePortioner(m.portioner,scale):m.portioner;
+  [port,m.totaltid,m.svarighetsgrad].filter(Boolean).forEach(v=>t+=v+"   ");
+  t+="\n\n"+T.ingredients.toUpperCase()+"\n";let lg="";
   for(const i of(result.ingredienser||[])){
     if(i.grupp&&i.grupp!==lg){t+="\n"+i.grupp.toUpperCase()+"\n";lg=i.grupp;}
-    t+="- "+(i.mangd?i.mangd+"  ":"")+(i.ingrediens||"")+"\n";
+    t+="- "+(i.mangd?scaleAmount(i.mangd,scale)+"  ":"")+(i.ingrediens||"")+"\n";
   }
-  t+="\nGÖR SÅ HÄR\n";
+  t+="\n"+T.steps.toUpperCase()+"\n";
   (result.steg||[]).forEach((s,i)=>{t+=(i+1)+". "+s+"\n";});
-  if(result.noteringar)t+="\nTIPS\n"+result.noteringar;
-  if(srcUrl)t+="\n\nKälla: "+srcUrl;
+  if(result.noteringar)t+="\n"+T.notes.toUpperCase()+"\n"+result.noteringar;
+  if(srcUrl)t+="\n\n"+T.source+srcUrl;
   return t.trim();
 }
 
-// ── Colors & constants ────────────────────────────────────────────────────────
-const F="#2d4a3e",T="#b85c38",G="#c9a84c",CR="#f5f0e8",PA="#ede6d6",WA="#faf7f2",MI="#6b6258",BO="#d4c9b5";
+// ── Constants ─────────────────────────────────────────────────────────────────
+const F="#2d4a3e",T2="#b85c38",G="#c9a84c",CR="#f5f0e8",PA="#ede6d6",WA="#faf7f2",MI="#6b6258",BO="#d4c9b5";
 const LANGS=["Swedish","English","Danish","Norwegian","Finnish","German","French","Spanish","Italian","Dutch","Portuguese","Polish","Russian","Greek","Turkish","Japanese","Chinese","Korean","Thai","Arabic","Hindi"];
 const SS={padding:"7px 10px",border:"1px solid #d4c9b5",borderRadius:5,fontFamily:"Georgia,serif",fontSize:13,color:"#2a2a2a",background:"#f5f0e8",outline:"none",cursor:"pointer",width:"100%"};
+const MAX_IMGS=4;
 const EXAMPLE=`Chocolate Chip Cookies (24 cookies)
 350 degrees F, 10-12 minutes
 
@@ -125,8 +173,8 @@ Mix in flour, baking soda, and salt. Stir in chips.
 Drop by rounded tablespoon onto ungreased baking sheets.
 Bake 9-11 minutes until golden brown. Cool on wire rack.`;
 
-// ── SVG Illustration ──────────────────────────────────────────────────────────
-function SumiIllustration() {
+// ── SVG ───────────────────────────────────────────────────────────────────────
+function SumiIllustration(){
   return h("svg",{viewBox:"0 0 1200 260",xmlns:"http://www.w3.org/2000/svg",style:{width:"100%",height:"auto",display:"block"}},
     h("defs",null,
       h("filter",{id:"ink",x:"-10%",y:"-10%",width:"120%",height:"120%"},
@@ -137,138 +185,184 @@ function SumiIllustration() {
       h("filter",{id:"splat"},h("feGaussianBlur",{stdDeviation:"0.6"}))
     ),
     h("g",{filter:"url(#ink)"},
-      h("path",{d:"M 95 245 C 94 220 92 195 90 168 C 89 150 90 135 92 118",stroke:"#2d4a3e",strokeWidth:"7",fill:"none",strokeLinecap:"round",opacity:"0.88"}),
-      h("path",{d:"M 92 118 C 76 92 68 62 70 38 C 71 22 80 10 90 12 C 100 14 104 30 100 55 C 97 75 92 98 92 118",stroke:"#2d4a3e",strokeWidth:"3.2",fill:"none",strokeLinecap:"round",opacity:"0.85"}),
-      h("path",{d:"M 92 118 C 82 88 78 58 82 36 C 85 20 93 10 101 14 C 108 18 109 35 105 60 C 102 80 95 100 92 118",stroke:"#2d4a3e",strokeWidth:"2.6",fill:"none",strokeLinecap:"round",opacity:"0.75"}),
-      h("path",{d:"M 72 70 Q 96 75 118 68",stroke:"#2d4a3e",strokeWidth:"1.5",fill:"none",strokeLinecap:"round",opacity:"0.3"})
+      h("path",{d:"M 95 245 C 94 220 92 195 90 168 C 89 150 90 135 92 118",stroke:F,strokeWidth:"7",fill:"none",strokeLinecap:"round",opacity:"0.88"}),
+      h("path",{d:"M 92 118 C 76 92 68 62 70 38 C 71 22 80 10 90 12 C 100 14 104 30 100 55 C 97 75 92 98 92 118",stroke:F,strokeWidth:"3.2",fill:"none",strokeLinecap:"round",opacity:"0.85"}),
+      h("path",{d:"M 92 118 C 82 88 78 58 82 36 C 85 20 93 10 101 14 C 108 18 109 35 105 60 C 102 80 95 100 92 118",stroke:F,strokeWidth:"2.6",fill:"none",strokeLinecap:"round",opacity:"0.75"})
     ),
     h("g",{filter:"url(#splat)",opacity:"0.18"},
-      h("circle",{cx:"52",cy:"55",r:"5",fill:"#2d4a3e"}),
-      h("circle",{cx:"138",cy:"42",r:"3.5",fill:"#2d4a3e"}),
-      h("circle",{cx:"130",cy:"105",r:"2",fill:"#b85c38",opacity:"0.9"})
+      h("circle",{cx:"52",cy:"55",r:"5",fill:F}),
+      h("circle",{cx:"138",cy:"42",r:"3.5",fill:F}),
+      h("circle",{cx:"130",cy:"105",r:"2",fill:T2,opacity:"0.9"})
     ),
     h("g",{transform:"rotate(-8, 400, 140)",filter:"url(#ink)"},
-      h("path",{d:"M 258 148 C 270 138 350 125 430 122 C 510 119 570 124 590 132 C 608 140 612 155 598 164 C 582 174 510 180 430 182 C 350 184 278 176 262 165 C 250 157 248 156 258 148 Z",fill:"#2d4a3e",fillOpacity:"0.08",stroke:"#2d4a3e",strokeWidth:"2.8",opacity:"0.6"}),
-      h("path",{d:"M 258 148 C 244 144 228 146 220 154 C 214 162 218 172 230 174 C 242 176 256 168 262 165",stroke:"#2d4a3e",strokeWidth:"5.5",fill:"none",strokeLinecap:"round",opacity:"0.75"}),
-      h("path",{d:"M 598 132 C 614 126 632 128 638 138 C 644 148 638 160 626 162 C 614 164 600 158 598 132",stroke:"#2d4a3e",strokeWidth:"5.5",fill:"none",strokeLinecap:"round",opacity:"0.75"})
+      h("path",{d:"M 258 148 C 270 138 350 125 430 122 C 510 119 570 124 590 132 C 608 140 612 155 598 164 C 582 174 510 180 430 182 C 350 184 278 176 262 165 C 250 157 248 156 258 148 Z",fill:F,fillOpacity:"0.08",stroke:F,strokeWidth:"2.8",opacity:"0.6"}),
+      h("path",{d:"M 258 148 C 244 144 228 146 220 154 C 214 162 218 172 230 174 C 242 176 256 168 262 165",stroke:F,strokeWidth:"5.5",fill:"none",strokeLinecap:"round",opacity:"0.75"}),
+      h("path",{d:"M 598 132 C 614 126 632 128 638 138 C 644 148 638 160 626 162 C 614 164 600 158 598 132",stroke:F,strokeWidth:"5.5",fill:"none",strokeLinecap:"round",opacity:"0.75"})
     ),
     h("g",{transform:"translate(650, 18)",filter:"url(#ink)"},
-      h("path",{d:"M 22 200 C 18 170 20 140 28 110 C 38 75 62 45 95 28 C 120 14 158 8 188 14 C 220 20 245 42 255 72 C 264 98 262 135 254 168 C 248 192 240 206 228 212 C 195 224 55 228 22 200 Z",fill:"#b85c38",fillOpacity:"0.14"}),
-      h("path",{d:"M 22 200 C 18 170 20 140 28 110 C 38 75 62 45 95 28 C 120 14 158 8 188 14 C 220 20 245 42 255 72 C 264 98 262 135 254 168 C 248 192 240 206 228 212 C 195 224 55 228 22 200 Z",stroke:"#b85c38",strokeWidth:"4",fill:"none",strokeLinecap:"round",opacity:"0.72"}),
-      h("path",{d:"M 72 28 C 80 55 80 100 76 148",stroke:"#2d4a3e",strokeWidth:"3",fill:"none",strokeLinecap:"round",opacity:"0.42"}),
-      h("path",{d:"M 156 14 C 162 42 162 88 158 140",stroke:"#2d4a3e",strokeWidth:"2.6",fill:"none",strokeLinecap:"round",opacity:"0.35"})
-    ),
-    h("g",{opacity:"0.55"},
-      h("path",{d:"M 598 195 C 590 175 582 152 578 132",stroke:"#2d4a3e",strokeWidth:"1.8",fill:"none",strokeLinecap:"round"}),
-      h("path",{d:"M 590 168 C 578 162 570 155 566 145",stroke:"#2d4a3e",strokeWidth:"1.4",fill:"none",strokeLinecap:"round"}),
-      h("ellipse",{cx:"572",cy:"150",rx:"6",ry:"3",fill:"#2d4a3e",opacity:"0.4",transform:"rotate(-30 572 150)"}),
-      h("circle",{cx:"555",cy:"185",r:"2.5",fill:"#b85c38",opacity:"0.5"})
+      h("path",{d:"M 22 200 C 18 170 20 140 28 110 C 38 75 62 45 95 28 C 120 14 158 8 188 14 C 220 20 245 42 255 72 C 264 98 262 135 254 168 C 248 192 240 206 228 212 C 195 224 55 228 22 200 Z",fill:T2,fillOpacity:"0.14"}),
+      h("path",{d:"M 22 200 C 18 170 20 140 28 110 C 38 75 62 45 95 28 C 120 14 158 8 188 14 C 220 20 245 42 255 72 C 264 98 262 135 254 168 C 248 192 240 206 228 212 C 195 224 55 228 22 200 Z",stroke:T2,strokeWidth:"4",fill:"none",strokeLinecap:"round",opacity:"0.72"}),
+      h("path",{d:"M 72 28 C 80 55 80 100 76 148",stroke:F,strokeWidth:"3",fill:"none",strokeLinecap:"round",opacity:"0.42"}),
+      h("path",{d:"M 156 14 C 162 42 162 88 158 140",stroke:F,strokeWidth:"2.6",fill:"none",strokeLinecap:"round",opacity:"0.35"})
     ),
     h("g",{transform:"rotate(18, 1120, 130)",filter:"url(#ink)"},
-      h("path",{d:"M 1148 252 C 1147 225 1145 195 1143 162 C 1141 138 1140 115 1141 95",stroke:"#2d4a3e",strokeWidth:"7.5",fill:"none",strokeLinecap:"round",opacity:"0.8"}),
-      h("path",{d:"M 1141 95 C 1135 78 1125 60 1118 48 C 1110 35 1102 26 1100 22 C 1098 16 1102 10 1112 10 C 1122 10 1132 18 1138 30 C 1144 42 1148 60 1147 78 C 1146 88 1144 94 1141 95 Z",fill:"#2d4a3e",fillOpacity:"0.12",stroke:"#2d4a3e",strokeWidth:"3",strokeLinecap:"round",opacity:"0.7"})
+      h("path",{d:"M 1148 252 C 1147 225 1145 195 1143 162 C 1141 138 1140 115 1141 95",stroke:F,strokeWidth:"7.5",fill:"none",strokeLinecap:"round",opacity:"0.8"}),
+      h("path",{d:"M 1141 95 C 1135 78 1125 60 1118 48 C 1110 35 1102 26 1100 22 C 1098 16 1102 10 1112 10 C 1122 10 1132 18 1138 30 C 1144 42 1148 60 1147 78 C 1146 88 1144 94 1141 95 Z",fill:F,fillOpacity:"0.12",stroke:F,strokeWidth:"3",strokeLinecap:"round",opacity:"0.7"})
+    )
+  );
+}
+
+// ── Language picker ───────────────────────────────────────────────────────────
+function LangPicker({uiLang,setUiLang}){
+  const [open,setOpen]=useState(false);
+  const ref=useRef();
+  useEffect(()=>{
+    if(!open)return;
+    const fn=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
+    document.addEventListener("mousedown",fn);
+    return()=>document.removeEventListener("mousedown",fn);
+  },[open]);
+  const cur=UI_LANG_LIST.find(l=>l.code===uiLang)||UI_LANG_LIST[0];
+  const T=UI_STRINGS[uiLang];
+  return h("div",{ref,style:{position:"relative",flexShrink:0}},
+    h("button",{
+      onClick:()=>setOpen(v=>!v),
+      style:{background:"rgba(201,168,76,0.12)",border:"1.5px solid rgba(201,168,76,0.45)",borderRadius:7,padding:"6px 11px",color:G,fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6,letterSpacing:"0.04em",fontFamily:"sans-serif"}
+    },
+      h("span",{style:{fontSize:16,lineHeight:1}},cur.flag),
+      h("span",{style:{fontSize:11}},T.langName),
+      h("span",{style:{fontSize:9,opacity:0.7}},open?"▲":"▼")
+    ),
+    open && h("div",{style:{position:"absolute",top:"calc(100% + 6px)",right:0,background:WA,border:"1px solid "+BO,borderRadius:8,boxShadow:"0 8px 28px rgba(0,0,0,0.18)",zIndex:200,minWidth:170,overflow:"hidden"}},
+      UI_LANG_LIST.map(l=>
+        h("button",{
+          key:l.code,
+          className:"lang-opt",
+          onClick:()=>{setUiLang(l.code);setOpen(false);},
+          style:{display:"flex",alignItems:"center",gap:9,width:"100%",padding:"10px 15px",border:"none",background:l.code===uiLang?PA:"transparent",cursor:"pointer",fontFamily:"sans-serif",fontSize:13,color:F,textAlign:"left",fontWeight:l.code===uiLang?700:400}
+        },
+          h("span",{style:{fontSize:16}},l.flag),
+          h("span",null,UI_STRINGS[l.code].langName)
+        )
+      )
     )
   );
 }
 
 // ── LangBar ───────────────────────────────────────────────────────────────────
-function LangBar({tab,tLang,setTLang,sLang,setSLang,mobile}){
-  return h("div",{style:{display:"grid",gridTemplateColumns:mobile?"1fr":"1fr 1fr",gap:12,marginBottom:20}},
+function LangBar({tab,tLang,setTLang,sLang,setSLang,mobile,T}){
+  return h("div",{style:{display:"grid",gridTemplateColumns:mobile?"1fr":"1fr 1fr",gap:12,marginBottom:16}},
     h("div",null,
-      h("label",{style:{display:"block",fontFamily:"sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",color:MI,marginBottom:5}},
-        "Översätt till"
-      ),
+      h("label",{style:{display:"block",fontFamily:"sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",color:MI,marginBottom:5}},T.toLang),
       h("select",{value:tLang,onChange:e=>setTLang(e.target.value),style:SS},
-        LANGS.map(l=>h("option",{key:l,value:l},l))
-      )
+        LANGS.map(l=>h("option",{key:l,value:l},l)))
     ),
-    tab!=="image" && h("div",null,
-      h("label",{style:{display:"block",fontFamily:"sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",color:MI,marginBottom:5}},
-        "Originalspråk"
-      ),
+    tab!=="image"&&h("div",null,
+      h("label",{style:{display:"block",fontFamily:"sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",color:MI,marginBottom:5}},T.fromLang),
       h("select",{value:sLang,onChange:e=>setSLang(e.target.value),style:SS},
-        h("option",{value:"auto"},"Automatisk igenkänning"),
-        LANGS.map(l=>h("option",{key:l,value:l},l))
-      )
+        h("option",{value:"auto"},T.autoDetect),
+        LANGS.map(l=>h("option",{key:l,value:l},l)))
+    )
+  );
+}
+
+// ── UnitsToggle ───────────────────────────────────────────────────────────────
+function UnitsToggle({units,setUnits,T}){
+  const btn=(val,label)=>h("button",{
+    className:"tog-btn",
+    onClick:()=>setUnits(val),
+    style:{flex:1,padding:"7px 4px",border:"none",borderRadius:4,fontFamily:"sans-serif",fontSize:10,fontWeight:700,letterSpacing:"0.07em",cursor:"pointer",
+      background:units===val?F:"transparent",color:units===val?CR:MI}
+  },label);
+  return h("div",{style:{marginBottom:16}},
+    h("label",{style:{display:"block",fontFamily:"sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",color:MI,marginBottom:5}},T.unitsLabel),
+    h("div",{style:{display:"flex",gap:2,background:PA,borderRadius:6,padding:2,border:"1px solid "+BO}},
+      btn("metric",T.metric),
+      btn("imperial",T.imperial)
     )
   );
 }
 
 // ── App ───────────────────────────────────────────────────────────────────────
 function App(){
-  const [tab,    setTab]    = useState("text");
-  const [input,  setInput]  = useState(EXAMPLE);
-  const [url,    setUrl]    = useState("");
-  const [imgB64,  setImgB64]  = useState(null);
-  const [imgMime, setImgMime] = useState("image/jpeg");
-  const [imgSrc,  setImgSrc]  = useState(null);
+  const [uiLang,  setUiLang]  = useState(()=>detectUiLang());
+  const [tab,     setTab]     = useState("text");
+  const [input,   setInput]   = useState(EXAMPLE);
+  const [url,     setUrl]     = useState("");
+  const [imgs,    setImgs]    = useState([]);
   const [tLang,   setTLang]   = useState("Swedish");
-  const [sLang,  setSLang]  = useState("auto");
-  const [result, setResult] = useState(null);
-  const [srcUrl, setSrcUrl] = useState(null);
-  const [busy,   setBusy]   = useState(false);
-  const [status, setStatus] = useState("");
-  const [copied, setCopied] = useState(false);
-  const [info,   setInfo]   = useState(false);
-  const [winW,   setWinW]   = useState(window.innerWidth);
-  const fileRef = useRef();
+  const [sLang,   setSLang]   = useState("auto");
+  const [units,   setUnits]   = useState("metric");
+  const [result,  setResult]  = useState(null);
+  const [srcUrl,  setSrcUrl]  = useState(null);
+  const [scale,   setScale]   = useState(1);
+  const [busy,    setBusy]    = useState(false);
+  const [status,  setStatus]  = useState("");
+  const [copied,  setCopied]  = useState(false);
+  const [info,    setInfo]    = useState(false);
+  const [winW,    setWinW]    = useState(window.innerWidth);
+  const fileRef=useRef();
 
   useEffect(()=>{
-    const h2=()=>setWinW(window.innerWidth);
-    window.addEventListener("resize",h2);
-    return ()=>window.removeEventListener("resize",h2);
+    const fn=()=>setWinW(window.innerWidth);
+    window.addEventListener("resize",fn);
+    return()=>window.removeEventListener("resize",fn);
   },[]);
 
-  const mobile = winW<640;
-  const medium = winW<860;
+  // Update page title when UI lang changes
+  useEffect(()=>{
+    document.title=UI_STRINGS[uiLang].siteTitle;
+  },[uiLang]);
 
-  function loadImg(file){
-    if(!file||!file.type.startsWith("image/")){setStatus("Bara bildfiler (JPG, PNG, HEIC).");return;}
-    if(file.size>20000000){setStatus("Max 20 MB.");return;}
-    setStatus("Förbereder bild...");
+  const T=UI_STRINGS[uiLang];
+  const mobile=winW<640;
+  const medium=winW<860;
+
+  // Image compression
+  function compressAndAdd(file){
+    if(!file||!file.type.startsWith("image/"))return setStatus(T.imgFormat);
+    if(imgs.length>=MAX_IMGS)return setStatus("Max "+MAX_IMGS);
+    setStatus("...");
     const reader=new FileReader();
     reader.onload=function(e){
-      const original=e.target.result;
-      setImgSrc(original);
+      const orig=e.target.result;
       const img=new Image();
       img.onload=function(){
-        const MAX=1600;
-        let w=img.width, h=img.height;
-        if(w>MAX||h>MAX){const s=MAX/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}
-        const canvas=document.createElement("canvas");
-        canvas.width=w;canvas.height=h;
-        canvas.getContext("2d").drawImage(img,0,0,w,h);
-        const compressed=canvas.toDataURL("image/jpeg",0.85);
+        const MAX=1200;let w=img.width,hh=img.height;
+        if(w>MAX||hh>MAX){const s=MAX/Math.max(w,hh);w=Math.round(w*s);hh=Math.round(hh*s);}
+        const canvas=document.createElement("canvas");canvas.width=w;canvas.height=hh;
+        canvas.getContext("2d").drawImage(img,0,0,w,hh);
+        const compressed=canvas.toDataURL("image/jpeg",0.82);
         const b64=compressed.split(",")[1];
-        if(b64.length>3500000){setStatus("Bilden är för stor även efter komprimering. Försök med lägre upplösning.");return;}
-        setImgB64(b64);
-        setImgMime("image/jpeg");
-        setStatus("");
+        if(b64.length>1_200_000)return setStatus("Image too large after compression.");
+        setImgs(prev=>[...prev,{b64,mime:"image/jpeg",src:compressed}]);setStatus("");
       };
-      img.onerror=function(){setStatus("Kunde inte läsa bilden.");};
-      img.src=original;
+      img.onerror=()=>setStatus("Could not read image.");
+      img.src=orig;
     };
     reader.readAsDataURL(file);
   }
+  function removeImg(i){setImgs(prev=>prev.filter((_,idx)=>idx!==i));}
 
+  // Translate
   async function translate(){
-    setStatus("");setResult(null);setBusy(true);
+    setStatus("");setResult(null);setScale(1);setBusy(true);
     try{
       let recipe;
       if(tab==="text"){
-        if(!input.trim())throw new Error("Klistra in ett recept.");
-        setStatus("Översätter…");
-        recipe=await callBackend({type:"text",content:input,targetLanguage:tLang,sourceLanguage:sLang});
+        if(!input.trim())throw new Error(T.pasteLabel);
+        setStatus(T.btnTranslate+"...");
+        recipe=await callBackend({type:"text",content:input,targetLanguage:tLang,sourceLanguage:sLang,measurementSystem:units});
         setSrcUrl(null);
       }else if(tab==="url"){
-        if(!url.trim())throw new Error("Ange en webbadress.");
-        setStatus("Hämtar och översätter…");
-        recipe=await callBackend({type:"url",url:url.trim(),targetLanguage:tLang});
+        if(!url.trim())throw new Error(T.urlLabel);
+        setStatus(T.btnTranslate+"...");
+        recipe=await callBackend({type:"url",url:url.trim(),targetLanguage:tLang,measurementSystem:units});
         setSrcUrl(url.trim());
       }else{
-        if(!imgB64)throw new Error("Ladda upp ett foto först.");
-        setStatus("Läser foto…");
-        recipe=await callBackend({type:"image",image:imgB64,imageMime:imgMime,targetLanguage:tLang});
+        if(!imgs.length)throw new Error(T.imgSlotFirst);
+        setStatus(T.btnImg+"...");
+        recipe=await callBackend({type:"image",images:imgs.map(i=>({b64:i.b64,mime:i.mime})),targetLanguage:tLang,measurementSystem:units});
         setSrcUrl(null);
       }
       recipe._fetchedAt=new Date().toLocaleDateString("sv-SE");
@@ -279,207 +373,246 @@ function App(){
 
   function doCopy(){
     if(!result)return;
-    const text=buildPlainText(result,srcUrl);
+    const text=buildPlainText(result,srcUrl,scale,T);
     const ok=()=>{setCopied(true);setTimeout(()=>setCopied(false),2500);};
-    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(ok).catch(()=>fb(text,ok));}
-    else fb(text,ok);
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(ok).catch(()=>fbCopy(text,ok));
+    else fbCopy(text,ok);
   }
-  function fb(text,ok){
+  function fbCopy(text,ok){
     const ta=document.createElement("textarea");ta.value=text;ta.style.cssText="position:fixed;opacity:0";
     document.body.appendChild(ta);ta.focus();ta.select();document.execCommand("copy");document.body.removeChild(ta);ok();
   }
 
   const m=result?.meta||{};
-  const chips=[m.portioner,m.totaltid&&"Totalt: "+m.totaltid,m.svarighetsgrad].filter(Boolean);
+  const chips=[
+    m.portioner&&scale!==1?scalePortioner(m.portioner,scale):m.portioner,
+    m.totaltid&&"Totalt: "+m.totaltid,
+    m.svarighetsgrad
+  ].filter(Boolean);
+  const hasPortions=m.portioner&&/\d/.test(m.portioner);
 
-  // ── RENDER ──────────────────────────────────────────────────────────────────
+  // Result heading with source language
+  const detLang=result?.detectedLanguage;
+  const langMap=LANG_NAMES[uiLang]||LANG_NAMES["en"];
+  const toLangStr=langMap[tLang]||tLang;
+  const resultHeading=detLang
+    ?T.resultFrom+" "+detLang+" "+T.resultTo+" "+toLangStr
+    :T.resultPrefix+" "+toLangStr;
+
+  const metricPairs=[["cups","dl"],["oz","g"],["sticks","g"],["lbs","kg"],["°F","°C"],["tbsp","msk"],["tsp","tsk"],["pint","dl"],["inch","cm"],["gallon","L"]];
+  const imperialPairs=[["dl","cups"],["g","oz"],["kg","lbs"],["°C","°F"],["msk","tbsp"],["tsk","tsp"],["cm","inch"],["L","gallon"]];
+  const convPairs=units==="metric"?metricPairs:imperialPairs;
+
   return h("div",{style:{background:CR,minHeight:"100vh",paddingBottom:100}},
 
     // Header
-    h("header",{style:{background:"#1c3028",borderBottom:"3px solid "+T}},
-      h("div",{style:{background:PA,borderBottom:"1px solid "+BO,padding:"4px 0 0",overflow:"hidden"}},
-        h(SumiIllustration,null)
-      ),
-      h("div",{style:{padding:mobile?"16px 18px 14px":"22px 36px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+    h("header",{style:{background:"#1c3028",borderBottom:"3px solid "+T2}},
+      h("div",{style:{background:PA,borderBottom:"1px solid "+BO,padding:"4px 0 0",overflow:"hidden"}},h(SumiIllustration,null)),
+      h("div",{style:{padding:mobile?"12px 14px 10px":"18px 32px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
         h("div",null,
-          h("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:8}},
-            h("div",{style:{width:28,height:2,background:T,borderRadius:2}}),
-            h("span",{style:{color:"rgba(237,230,214,0.45)",fontSize:9,letterSpacing:"0.22em",textTransform:"uppercase",fontFamily:"sans-serif"}},
-              "Recept & Köksöversättning"
-            )
+          h("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:6}},
+            h("div",{style:{width:26,height:2,background:T2,borderRadius:2}}),
+            h("span",{style:{color:"rgba(237,230,214,0.45)",fontSize:9,letterSpacing:"0.2em",textTransform:"uppercase",fontFamily:"sans-serif"}},T.subtitle)
           ),
           h("h1",{style:{margin:0,lineHeight:1,fontFamily:"'Palatino Linotype','Georgia',serif",fontWeight:400}},
-            h("span",{style:{fontSize:"clamp(28px,5.5vw,52px)",color:CR}},"Recept"),
-            h("span",{style:{fontSize:"clamp(28px,5.5vw,52px)",color:G,fontStyle:"italic"}},"översättaren")
+            h("span",{style:{fontSize:"clamp(26px,5vw,50px)",color:CR}},"Recept"),
+            h("span",{style:{fontSize:"clamp(26px,5vw,50px)",color:G,fontStyle:"italic"}},"översättaren")
           )
         ),
-        h("button",{onClick:()=>setInfo(v=>!v),style:{background:"transparent",border:"1.5px solid rgba(201,168,76,0.4)",borderRadius:"50%",width:34,height:34,color:G,fontSize:16,fontWeight:700,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Georgia,serif",fontStyle:"italic"}},"i")
+        h("div",{style:{display:"flex",alignItems:"center",gap:8}},
+          h(LangPicker,{uiLang,setUiLang}),
+          h("button",{
+            className:"info-btn",
+            onClick:()=>setInfo(v=>!v),
+            style:{background:"rgba(201,168,76,0.12)",border:"1.5px solid rgba(201,168,76,0.45)",borderRadius:7,padding:"6px 12px",color:G,fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",gap:5,letterSpacing:"0.05em",fontFamily:"sans-serif"}
+          },
+            h("span",{style:{fontSize:15,lineHeight:1}},"ⓘ"),
+            mobile?null:h("span",null,T.infoBtn)
+          )
+        )
       )
     ),
 
     // Info modal
-    info && h("div",{onClick:()=>setInfo(false),style:{position:"fixed",inset:0,background:"rgba(20,30,26,0.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:24}},
-      h("div",{onClick:e=>e.stopPropagation(),style:{background:WA,borderRadius:10,border:"1px solid "+BO,maxWidth:520,width:"100%",boxShadow:"0 16px 48px rgba(0,0,0,0.25)",overflow:"hidden"}},
-        h("div",{style:{background:PA,padding:"14px 22px",borderBottom:"1px solid "+BO,display:"flex",justifyContent:"space-between",alignItems:"center"}},
-          h("span",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",fontSize:16,color:F}},"Om Receptöversättaren"),
-          h("button",{onClick:()=>setInfo(false),style:{background:"transparent",border:"none",color:MI,fontSize:22,cursor:"pointer"}},"×")
+    info&&h("div",{onClick:()=>setInfo(false),style:{position:"fixed",inset:0,background:"rgba(20,30,26,0.6)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:24}},
+      h("div",{onClick:e=>e.stopPropagation(),style:{background:WA,borderRadius:10,border:"1px solid "+BO,maxWidth:540,width:"100%",boxShadow:"0 16px 48px rgba(0,0,0,0.28)",overflow:"hidden"}},
+        h("div",{style:{background:PA,padding:"13px 20px",borderBottom:"1px solid "+BO,display:"flex",justifyContent:"space-between",alignItems:"center"}},
+          h("span",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",fontSize:16,color:F}},T.infoTitle),
+          h("button",{onClick:()=>setInfo(false),style:{background:"transparent",border:"none",color:MI,fontSize:24,cursor:"pointer",lineHeight:1,padding:"0 2px"}},"×")
         ),
-        h("div",{style:{padding:"22px 26px",fontFamily:"sans-serif",fontSize:13,color:MI,lineHeight:1.8}},
-          h("p",{style:{margin:"0 0 14px"}},"Översätt recept på valfritt språk till valfritt målspråk — med automatisk omvandling av mått till metriska enheter."),
-          h("p",{style:{margin:"0 0 14px"}},"Tre sätt: klistra in text, ange en webbadress, eller ladda upp ett foto från en kokbok eller ett handskrivet recept."),
-          h("p",{style:{margin:0,fontSize:12,color:"#9a9088",borderTop:"1px solid "+BO,paddingTop:14}},"Upphovsrätten tillhör alltid originalkällan.")
+        h("div",{style:{padding:"20px 24px",fontFamily:"sans-serif",fontSize:13,color:MI,lineHeight:1.85}},
+          h("p",{style:{margin:"0 0 11px",fontWeight:700,color:F,fontSize:14}},T.infoWelcome),
+          h("p",{style:{margin:"0 0 11px"}},T.infoP1),
+          h("p",{style:{margin:"0 0 11px"}},T.infoP2),
+          h("p",{style:{margin:"0 0 11px"}},T.infoP3),
+          h("p",{style:{margin:0,fontSize:12,color:"#9a9088",borderTop:"1px solid "+BO,paddingTop:13}},T.infoFooter)
         )
       )
     ),
 
     // Main
-    h("main",{style:{maxWidth:920,margin:"0 auto",padding:mobile?"20px 14px 0":"36px 24px 0"}},
+    h("main",{style:{maxWidth:920,margin:"0 auto",padding:mobile?"16px 12px 0":"30px 20px 0"}},
 
       // Tabs
-      h("div",{style:{display:"flex",borderBottom:"2px solid "+BO,marginBottom:20,overflowX:"auto"}},
-        [["text","Klistra in text"],["url","Webbadress (URL)"],["image","Foto 📷"]].map(([t,l])=>
-          h("button",{key:t,onClick:()=>{setTab(t);setStatus("");},style:{padding:mobile?"10px 14px":"11px 26px",border:"none",background:tab===t?PA:"transparent",fontFamily:"sans-serif",fontSize:mobile?10:11,fontWeight:tab===t?700:500,letterSpacing:"0.1em",textTransform:"uppercase",color:tab===t?F:MI,borderBottom:"2px solid "+(tab===t?F:"transparent"),marginBottom:-2,cursor:"pointer",borderRadius:"4px 4px 0 0",whiteSpace:"nowrap",flexShrink:0}},l)
-        )
+      h("div",{style:{display:"flex",borderBottom:"2px solid "+BO,marginBottom:16,overflowX:"auto"}},
+        [[" text",T.tabText],["url",T.tabUrl],["image",T.tabImg]].map(([t,l])=>{
+          const tv=t.trim();
+          return h("button",{key:tv,onClick:()=>{setTab(tv);setStatus("");},
+            style:{padding:mobile?"9px 12px":"10px 22px",border:"none",background:tab===tv?PA:"transparent",fontFamily:"sans-serif",fontSize:mobile?10:11,fontWeight:tab===tv?700:500,letterSpacing:"0.08em",textTransform:"uppercase",color:tab===tv?F:MI,borderBottom:"2px solid "+(tab===tv?F:"transparent"),marginBottom:-2,cursor:"pointer",borderRadius:"4px 4px 0 0",whiteSpace:"nowrap",flexShrink:0}},l);
+        })
       ),
 
       // Grid
-      h("div",{style:{display:"grid",gridTemplateColumns:medium?"1fr":"1fr 236px",gap:mobile?16:24}},
+      h("div",{style:{display:"grid",gridTemplateColumns:medium?"1fr":"1fr 236px",gap:mobile?12:20}},
 
-        // Left column
+        // Left
         h("div",null,
-          h(LangBar,{tab,tLang,setTLang,sLang,setSLang,mobile}),
+          h(LangBar,{tab,tLang,setTLang,sLang,setSLang,mobile,T}),
+          h(UnitsToggle,{units,setUnits,T}),
 
           // Text tab
-          tab==="text" && h("div",{style:{background:WA,borderRadius:8,border:"1px solid "+BO,boxShadow:"0 1px 8px rgba(45,74,62,0.06)",overflow:"hidden"}},
-            h("div",{style:{background:PA,padding:"9px 18px",borderBottom:"1px solid "+BO,display:"flex",justifyContent:"space-between",alignItems:"center"}},
-              h("span",{style:{fontFamily:"sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",color:MI}},"Originalrecept — valfritt språk"),
-              h("button",{onClick:()=>setInput(""),style:{background:"transparent",border:"none",color:MI,fontSize:11,cursor:"pointer",fontFamily:"sans-serif"}},"Rensa")
+          tab==="text"&&h("div",{style:{background:WA,borderRadius:8,border:"1px solid "+BO,boxShadow:"0 1px 8px rgba(45,74,62,0.06)",overflow:"hidden"}},
+            h("div",{style:{background:PA,padding:"8px 16px",borderBottom:"1px solid "+BO,display:"flex",justifyContent:"space-between",alignItems:"center"}},
+              h("span",{style:{fontFamily:"sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",color:MI}},T.pasteLabel),
+              h("button",{onClick:()=>setInput(""),style:{background:"transparent",border:"none",color:MI,fontSize:11,cursor:"pointer"}},T.clear)
             ),
-            h("textarea",{value:input,onChange:e=>setInput(e.target.value),style:{width:"100%",minHeight:mobile?200:290,padding:"16px 20px",border:"none",background:"transparent",fontFamily:"Georgia,serif",fontSize:13,lineHeight:1.85,resize:"vertical",outline:"none",color:"#6b6258",fontStyle:"italic",boxSizing:"border-box"}})
+            h("textarea",{value:input,onChange:e=>setInput(e.target.value),style:{width:"100%",minHeight:mobile?180:260,padding:"14px 18px",border:"none",background:"transparent",fontFamily:"Georgia,serif",fontSize:13,lineHeight:1.85,resize:"vertical",outline:"none",color:"#6b6258",fontStyle:"italic",boxSizing:"border-box"}})
           ),
 
           // URL tab
-          tab==="url" && h("div",{style:{background:WA,borderRadius:8,border:"1px solid "+BO,padding:24,boxShadow:"0 1px 8px rgba(45,74,62,0.06)"}},
-            h("label",{style:{display:"block",fontFamily:"sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",color:MI,marginBottom:10}},"Receptets webbadress"),
-            h("input",{type:"text",value:url,onChange:e=>setUrl(e.target.value),placeholder:"https://www.allrecipes.com/recipe/...",style:{width:"100%",padding:"12px 14px",border:"1px solid "+BO,borderRadius:6,fontFamily:"Georgia,serif",fontSize:13,outline:"none",color:"#2a2a2a",marginBottom:18,boxSizing:"border-box",background:CR}}),
-            h("div",{style:{borderTop:"1px solid "+BO,paddingTop:16,fontFamily:"sans-serif",fontSize:12,color:MI,lineHeight:1.8}},
-              h("div",{style:{fontWeight:700,color:F,marginBottom:4,fontSize:11}},"Fungerar med:"),
+          tab==="url"&&h("div",{style:{background:WA,borderRadius:8,border:"1px solid "+BO,padding:20,boxShadow:"0 1px 8px rgba(45,74,62,0.06)"}},
+            h("label",{style:{display:"block",fontFamily:"sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",color:MI,marginBottom:8}},T.urlLabel),
+            h("input",{type:"text",value:url,onChange:e=>setUrl(e.target.value),placeholder:"https://www.allrecipes.com/recipe/...",style:{width:"100%",padding:"10px 12px",border:"1px solid "+BO,borderRadius:6,fontFamily:"Georgia,serif",fontSize:13,outline:"none",color:"#2a2a2a",marginBottom:14,boxSizing:"border-box",background:CR}}),
+            h("div",{style:{borderTop:"1px solid "+BO,paddingTop:13,fontFamily:"sans-serif",fontSize:12,color:MI,lineHeight:1.8}},
+              h("div",{style:{fontWeight:700,color:F,marginBottom:3,fontSize:11}},T.worksWith),
               "AllRecipes · Food Network · NYT Cooking",h("br",null),"Serious Eats · Epicurious · BBC Good Food"
             )
           ),
 
           // Image tab
-          tab==="image" && h("div",null,
-            h("input",{ref:fileRef,type:"file",accept:"image/*",style:{display:"none"},onChange:e=>loadImg(e.target.files[0])}),
-            h("div",{
-              onClick:()=>fileRef.current.click(),
-              onDragOver:e=>e.preventDefault(),
-              onDrop:e=>{e.preventDefault();loadImg(e.dataTransfer.files[0]);},
-              style:{background:WA,borderRadius:8,border:"2px dashed "+BO,padding:mobile?24:36,textAlign:"center",cursor:"pointer",boxShadow:"0 1px 8px rgba(45,74,62,0.06)"}
-            },
-              imgSrc
-                ? h("div",null,
-                    h("img",{src:imgSrc,alt:"Bild",style:{maxWidth:"100%",maxHeight:260,borderRadius:6,border:"1px solid "+BO}}),
-                    h("div",{style:{marginTop:12,fontFamily:"sans-serif",fontSize:11,color:MI}},"Klicka för att byta bild")
-                  )
-                : h("div",null,
-                    h("div",{style:{fontSize:mobile?36:48,marginBottom:12}},"📷"),
-                    h("div",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",fontSize:mobile?15:18,color:F,marginBottom:8}},"Ladda upp ett foto av receptet"),
-                    h("div",{style:{fontFamily:"sans-serif",fontSize:12,color:MI,lineHeight:1.7}},"Dra och släpp, eller klicka för att välja"),
-                    h("div",{style:{marginTop:16,fontFamily:"sans-serif",fontSize:11,color:BO}},"JPG · PNG · HEIC · Max 8 MB")
-                  )
+          tab==="image"&&h("div",null,
+            h("input",{ref:fileRef,type:"file",accept:"image/*",style:{display:"none"},onChange:e=>{if(e.target.files[0])compressAndAdd(e.target.files[0]);e.target.value="";}}),
+            h("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:9,marginBottom:10}},
+              imgs.map((img,i)=>
+                h("div",{key:i,style:{position:"relative",borderRadius:8,overflow:"hidden",border:"1px solid "+BO,aspectRatio:"4/3",background:"#e8e0d0"}},
+                  h("img",{src:img.src,alt:"",style:{width:"100%",height:"100%",objectFit:"cover"}}),
+                  h("button",{onClick:()=>removeImg(i),style:{position:"absolute",top:5,right:5,background:"rgba(0,0,0,0.55)",border:"none",borderRadius:"50%",width:24,height:24,color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}},"×")
+                )
+              ),
+              imgs.length<MAX_IMGS&&h("div",{
+                className:"img-slot",
+                onClick:()=>fileRef.current.click(),
+                onDragOver:e=>e.preventDefault(),
+                onDrop:e=>{e.preventDefault();if(e.dataTransfer.files[0])compressAndAdd(e.dataTransfer.files[0]);},
+                style:{borderRadius:8,border:"2px dashed "+BO,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",aspectRatio:"4/3",background:WA,gap:7}
+              },
+                h("div",{style:{fontSize:imgs.length===0?38:26,opacity:0.5}},"📷"),
+                h("div",{style:{fontFamily:"sans-serif",fontSize:11,color:MI,textAlign:"center",padding:"0 8px"}},
+                  imgs.length===0?T.imgSlotFirst:T.imgSlotAdd)
+              )
             ),
-            h("div",{style:{marginTop:14,background:PA,borderRadius:6,padding:"12px 16px",fontFamily:"sans-serif",fontSize:12,color:MI,lineHeight:1.7,border:"1px solid "+BO}},
-              h("strong",{style:{color:F}},"Tips: "),
-              "Fungerar med kokbokssidor, handskrivna recept och restaurangmenyer — på vilket språk som helst."
-            )
+            imgs.length===0&&h("div",{style:{fontFamily:"sans-serif",fontSize:11,color:BO,textAlign:"center",marginBottom:9}},T.imgFormat),
+            imgs.length>0&&h("div",{style:{fontFamily:"sans-serif",fontSize:11,color:MI,marginBottom:9}},
+              imgs.length+T.imgCount1+MAX_IMGS+T.imgCount2+(imgs.length<MAX_IMGS?T.imgCountMore:"")),
+            h("div",{style:{background:PA,borderRadius:6,padding:"10px 14px",fontFamily:"sans-serif",fontSize:12,color:MI,lineHeight:1.7,border:"1px solid "+BO}},
+              h("strong",{style:{color:F}},T.imgTipLabel),T.imgTip)
           )
         ),
 
         // Sidebar
-        h("div",{style:{display:"flex",flexDirection:"column",gap:16}},
-          !mobile && h("div",{style:{background:WA,borderRadius:8,border:"1px solid "+BO,padding:"16px 18px",boxShadow:"0 1px 8px rgba(45,74,62,0.06)"}},
-            h("div",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",color:F,fontSize:15,marginBottom:12,paddingBottom:10,borderBottom:"1px solid "+BO}},"Konverteras"),
-            h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"7px 12px"}},
-              [["cups","dl"],["oz","g"],["sticks","g"],["lbs","kg"],["°F","°C"],["tbsp","msk"],["tsp","tsk"],["pint","dl"],["inch","cm"],["gallon","L"]].map(([a,b])=>
-                h("div",{key:a,style:{display:"flex",alignItems:"center",gap:5,fontFamily:"Georgia,serif",fontSize:12,color:MI}},
-                  h("span",{style:{color:T}},a),
-                  h("span",{style:{color:BO,fontSize:8}},"▶"),
-                  h("span",{style:{color:F}},b)
+        h("div",{style:{display:"flex",flexDirection:"column",gap:13}},
+          !mobile&&h("div",{style:{background:WA,borderRadius:8,border:"1px solid "+BO,padding:"14px 16px",boxShadow:"0 1px 8px rgba(45,74,62,0.06)"}},
+            h("div",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",color:F,fontSize:14,marginBottom:9,paddingBottom:8,borderBottom:"1px solid "+BO}},T.converts),
+            h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5px 9px"}},
+              convPairs.map(([a,b])=>
+                h("div",{key:a,style:{display:"flex",alignItems:"center",gap:4,fontFamily:"Georgia,serif",fontSize:12,color:MI}},
+                  h("span",{style:{color:T2}}," "+a+" "),
+                  h("span",{style:{color:BO,fontSize:11}},"⇄"),
+                  h("span",{style:{color:F}}," "+b)
                 )
               )
             )
           ),
-          h("button",{onClick:translate,disabled:busy,style:{background:busy?"#7e9e96":F,color:CR,border:"none",borderRadius:6,padding:"15px 12px",fontFamily:"sans-serif",fontSize:12,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",cursor:busy?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,boxShadow:busy?"none":"0 4px 16px rgba(45,74,62,0.3)"}},
+          h("button",{onClick:translate,disabled:busy,style:{background:busy?"#7e9e96":F,color:CR,border:"none",borderRadius:6,padding:"13px 9px",fontFamily:"sans-serif",fontSize:11,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",cursor:busy?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,boxShadow:busy?"none":"0 4px 16px rgba(45,74,62,0.3)"}},
             busy
-              ? [h("span",{key:"s",style:{width:14,height:14,border:"2px solid rgba(237,230,214,0.3)",borderTopColor:CR,borderRadius:"50%",display:"inline-block",animation:"spin .7s linear infinite",flexShrink:0,boxSizing:"content-box"}}),status]
-              : tab==="image" ? "📷 Läs och översätt" : "Översätt recept"
+              ?[h("span",{key:"sp",style:{width:13,height:13,border:"2px solid rgba(237,230,214,0.3)",borderTopColor:CR,borderRadius:"50%",display:"inline-block",animation:"spin .7s linear infinite",flexShrink:0,boxSizing:"content-box"}}),status]
+              :tab==="image"?T.btnImg:T.btnTranslate
           ),
-          status&&!busy && h("div",{style:{background:"#fdf0ed",borderLeft:"3px solid "+T,borderRadius:"0 6px 6px 0",padding:"12px 14px",fontFamily:"sans-serif",fontSize:12,color:T,lineHeight:1.65}},status)
+          status&&!busy&&h("div",{style:{background:"#fdf0ed",borderLeft:"3px solid "+T2,borderRadius:"0 6px 6px 0",padding:"10px 12px",fontFamily:"sans-serif",fontSize:12,color:T2,lineHeight:1.65}},status)
         )
       ),
 
       // Result
-      result && h("div",{style:{marginTop:48,background:WA,borderRadius:8,border:"1px solid "+BO,boxShadow:"0 4px 28px rgba(45,74,62,0.09)",overflow:"hidden"}},
-        h("div",{style:{background:PA,padding:"12px 24px",borderBottom:"1px solid "+BO,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}},
-          h("span",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",color:F,fontSize:14}},"Översatt recept — "+tLang),
-          h("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
-            h("button",{onClick:doCopy,style:{padding:"8px 18px",borderRadius:5,border:"1.5px solid "+F,background:copied?F:"transparent",color:copied?CR:F,fontFamily:"sans-serif",fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",cursor:"pointer"}},copied?"✓ Kopierat":"Kopiera text"),
-            h("button",{onClick:()=>generatePDF(result),style:{padding:"8px 18px",borderRadius:5,border:"none",background:T,color:"#fff",fontFamily:"sans-serif",fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",cursor:"pointer",boxShadow:"0 2px 10px rgba(184,92,56,0.35)"}},"Ladda ner PDF")
+      result&&h("div",{style:{marginTop:40,background:WA,borderRadius:8,border:"1px solid "+BO,boxShadow:"0 4px 28px rgba(45,74,62,0.09)",overflow:"hidden"}},
+        h("div",{style:{background:PA,padding:"10px 20px",borderBottom:"1px solid "+BO,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:9}},
+          h("span",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",color:F,fontSize:13}},resultHeading),
+          h("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+            h("button",{onClick:doCopy,style:{padding:"7px 14px",borderRadius:5,border:"1.5px solid "+F,background:copied?F:"transparent",color:copied?CR:F,fontFamily:"sans-serif",fontSize:10,fontWeight:700,letterSpacing:"0.09em",textTransform:"uppercase",cursor:"pointer"}},copied?T.copiedBtn:T.copyBtn),
+            h("button",{onClick:()=>generatePDF(result,T),style:{padding:"7px 14px",borderRadius:5,border:"none",background:T2,color:"#fff",fontFamily:"sans-serif",fontSize:10,fontWeight:700,letterSpacing:"0.09em",textTransform:"uppercase",cursor:"pointer",boxShadow:"0 2px 10px rgba(184,92,56,0.3)"}},T.pdfBtn)
           )
         ),
-        h("div",{style:{padding:mobile?"24px 18px":"40px 48px"}},
-          h("div",{style:{display:"flex",alignItems:"flex-start",gap:16,marginBottom:6}},
-            h("div",{style:{width:4,minHeight:52,background:T,borderRadius:2,flexShrink:0,marginTop:4}}),
-            h("h2",{style:{margin:0,fontFamily:"'Palatino Linotype','Georgia',serif",fontSize:"clamp(24px,4vw,36px)",fontWeight:400,color:F,lineHeight:1.1}},result.titel)
+        h("div",{style:{padding:mobile?"20px 15px":"36px 44px"}},
+          h("div",{style:{display:"flex",alignItems:"flex-start",gap:14,marginBottom:7}},
+            h("div",{style:{width:4,minHeight:46,background:T2,borderRadius:2,flexShrink:0,marginTop:3}}),
+            h("h2",{style:{margin:0,fontFamily:"'Palatino Linotype','Georgia',serif",fontSize:"clamp(21px,3.8vw,33px)",fontWeight:400,color:F,lineHeight:1.15}},result.titel)
           ),
-          result.beskrivning && h("div",{style:{marginLeft:20,marginBottom:24,fontFamily:"Georgia,serif",fontSize:14,color:MI,lineHeight:1.8,fontStyle:"italic",borderLeft:"2px solid "+G,paddingLeft:16}},result.beskrivning),
-          chips.length>0 && h("div",{style:{display:"inline-flex",flexWrap:"wrap",border:"1px solid "+BO,borderRadius:6,overflow:"hidden",marginBottom:32}},
-            chips.map((c,i)=>h("div",{key:i,style:{padding:"9px 20px",fontFamily:"sans-serif",fontSize:11,color:F,fontWeight:600,background:i%2===0?PA:WA,borderRight:i<chips.length-1?"1px solid "+BO:"none"}},c))
+          result.beskrivning&&h("div",{style:{marginLeft:18,marginBottom:20,fontFamily:"Georgia,serif",fontSize:14,color:MI,lineHeight:1.8,fontStyle:"italic",borderLeft:"2px solid "+G,paddingLeft:14}},result.beskrivning),
+
+          (chips.length>0||hasPortions)&&h("div",{style:{marginBottom:26,display:"flex",flexWrap:"wrap",alignItems:"center",gap:9}},
+            chips.length>0&&h("div",{style:{display:"inline-flex",flexWrap:"wrap",border:"1px solid "+BO,borderRadius:6,overflow:"hidden"}},
+              chips.map((c,i)=>h("div",{key:i,style:{padding:"7px 16px",fontFamily:"sans-serif",fontSize:11,color:F,fontWeight:600,background:i%2===0?PA:WA,borderRight:i<chips.length-1?"1px solid "+BO:"none"}},c))
+            ),
+            hasPortions&&h("div",{style:{display:"flex",alignItems:"center",gap:5,fontFamily:"sans-serif",fontSize:11}},
+              h("span",{style:{color:MI,fontSize:10}},T.scaleLabel),
+              [0.5,1,2,3].map(s=>
+                h("button",{key:s,onClick:()=>setScale(s),style:{padding:"5px 9px",borderRadius:5,border:"1.5px solid "+(scale===s?F:BO),background:scale===s?F:"transparent",color:scale===s?CR:MI,fontFamily:"sans-serif",fontSize:10,fontWeight:700,cursor:"pointer"}},
+                  s===0.5?"½x":s+"x")
+              )
+            )
           ),
 
-          h("div",{style:{display:"flex",alignItems:"center",gap:14,margin:"0 0 18px"}},
-            h("span",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",fontSize:20,color:T,whiteSpace:"nowrap"}},"Ingredienser"),
+          h("div",{style:{display:"flex",alignItems:"center",gap:12,margin:"0 0 14px"}},
+            h("span",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",fontSize:18,color:T2,whiteSpace:"nowrap"}},T.ingredients),
             h("div",{style:{flex:1,height:1,background:BO}})
           ),
-          h("ul",{style:{listStyle:"none",padding:0,margin:"0 0 12px"}},
+          h("ul",{style:{listStyle:"none",padding:0,margin:"0 0 8px"}},
             (result.ingredienser||[]).map((ing,i)=>{
               const grp=ing.grupp||"",prev=result.ingredienser[i-1];
               const newG=grp&&(!prev||(prev.grupp||"")!==grp);
               return newG
-                ? h("li",{key:"g"+i,style:{padding:"14px 0 4px",fontFamily:"sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:T,borderTop:"1px solid "+BO}},grp)
-                : h("li",{key:i,style:{display:"grid",gridTemplateColumns:mobile?"90px 1fr":"116px 1fr",padding:"8px 0",fontFamily:"sans-serif",fontSize:mobile?12:13,borderBottom:"1px dotted "+BO,alignItems:"baseline",gap:8}},
-                    h("span",{style:{fontWeight:700,color:F}},ing.mangd||""),
+                ?h("li",{key:"g"+i,style:{padding:"12px 0 3px",fontFamily:"sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.17em",textTransform:"uppercase",color:T2,borderTop:"1px solid "+BO}},grp)
+                :h("li",{key:i,style:{display:"grid",gridTemplateColumns:mobile?"86px 1fr":"110px 1fr",padding:"6px 0",fontFamily:"sans-serif",fontSize:mobile?12:13,borderBottom:"1px dotted "+BO,alignItems:"baseline",gap:8}},
+                    h("span",{style:{fontWeight:700,color:F}},scaleAmount(ing.mangd,scale)||""),
                     h("span",{style:{color:"#2a2a2a"}},ing.ingrediens)
                   );
             })
           ),
 
-          h("div",{style:{display:"flex",alignItems:"center",gap:14,margin:"32px 0 18px"}},
-            h("span",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",fontSize:20,color:T,whiteSpace:"nowrap"}},"Gör så här"),
+          h("div",{style:{display:"flex",alignItems:"center",gap:12,margin:"26px 0 14px"}},
+            h("span",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",fontSize:18,color:T2,whiteSpace:"nowrap"}},T.steps),
             h("div",{style:{flex:1,height:1,background:BO}})
           ),
           h("ol",{style:{listStyle:"none",padding:0,margin:0}},
             (result.steg||[]).map((s,i)=>
-              h("li",{key:i,style:{display:"flex",gap:mobile?12:18,marginBottom:18,fontFamily:"sans-serif",fontSize:mobile?12:13,lineHeight:1.85}},
-                h("span",{style:{display:"flex",alignItems:"center",justifyContent:"center",minWidth:30,height:30,background:F,color:CR,borderRadius:"50%",fontSize:12,fontWeight:700,flexShrink:0,marginTop:1}},i+1),
-                h("span",{style:{paddingTop:5,color:"#2a2a2a"}},s)
+              h("li",{key:i,style:{display:"flex",gap:mobile?10:15,marginBottom:14,fontFamily:"sans-serif",fontSize:mobile?12:13,lineHeight:1.85}},
+                h("span",{style:{display:"flex",alignItems:"center",justifyContent:"center",minWidth:27,height:27,background:F,color:CR,borderRadius:"50%",fontSize:11,fontWeight:700,flexShrink:0,marginTop:2}},i+1),
+                h("span",{style:{paddingTop:3,color:"#2a2a2a"}},s)
               )
             )
           ),
 
-          result.noteringar && h("div",null,
-            h("div",{style:{display:"flex",alignItems:"center",gap:14,margin:"32px 0 16px"}},
-              h("span",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",fontSize:18,color:MI,whiteSpace:"nowrap"}},"Tips & noteringar"),
+          result.noteringar&&h("div",null,
+            h("div",{style:{display:"flex",alignItems:"center",gap:12,margin:"26px 0 12px"}},
+              h("span",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",fontSize:16,color:MI,whiteSpace:"nowrap"}},T.notes),
               h("div",{style:{flex:1,height:1,background:BO}})
             ),
-            h("div",{style:{background:PA,borderLeft:"3px solid "+G,padding:"18px 22px",borderRadius:"0 6px 6px 0",fontFamily:"Georgia,serif",fontSize:13,color:MI,lineHeight:1.8,fontStyle:"italic"}},result.noteringar)
+            h("div",{style:{background:PA,borderLeft:"3px solid "+G,padding:"15px 19px",borderRadius:"0 6px 6px 0",fontFamily:"Georgia,serif",fontSize:13,color:MI,lineHeight:1.8,fontStyle:"italic"}},result.noteringar)
           ),
 
-          (srcUrl||result._fetchedAt) && h("div",{style:{marginTop:32,paddingTop:14,borderTop:"1px dotted "+BO,fontFamily:"sans-serif",fontSize:11,color:"#aaa098",lineHeight:1.7}},
-            h("span",{style:{fontWeight:600,letterSpacing:"0.05em"}},"Källa: "),
-            srcUrl && h("a",{href:srcUrl,target:"_blank",rel:"noopener",style:{color:"#aaa098",textDecoration:"underline"}},srcUrl),
-            result._fetchedAt && h("span",null," · "+result._fetchedAt)
+          (srcUrl||result._fetchedAt)&&h("div",{style:{marginTop:26,paddingTop:12,borderTop:"1px dotted "+BO,fontFamily:"sans-serif",fontSize:11,color:"#aaa098",lineHeight:1.7}},
+            h("span",{style:{fontWeight:600}},T.source),
+            srcUrl&&h("a",{href:srcUrl,target:"_blank",rel:"noopener",style:{color:"#aaa098",textDecoration:"underline"}},srcUrl),
+            result._fetchedAt&&h("span",null," · "+result._fetchedAt)
           )
         )
       )
