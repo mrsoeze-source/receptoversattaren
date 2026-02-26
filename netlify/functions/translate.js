@@ -1,23 +1,15 @@
 /**
- * Netlify Function: /api/translate  (Groq-version v3 – multispråk + bildstöd)
- *
- * Groq gratis-lager: ~14 400 anrop/dag, inget kreditkort, inga EU-spärrar.
- *
- * POST body:
- *   { type: "text",  content: "...", targetLanguage: "Swedish", sourceLanguage: "auto" }
- *   { type: "url",   url: "https://...", targetLanguage: "Swedish" }
- *   { type: "image", image: "<base64>",  targetLanguage: "Swedish" }
- *
- * Svar:
- *   { ok: true,  recipe: { ... } }
- *   { ok: false, error: "..." }
+ * Netlify Function: /api/translate  (Groq-version v4)
+ * POST body variants:
+ *   { type:"text",  content:"...", targetLanguage:"Swedish", sourceLanguage:"auto", measurementSystem:"metric" }
+ *   { type:"url",   url:"https://...", targetLanguage:"Swedish", measurementSystem:"metric" }
+ *   { type:"image", images:[{b64:"...",mime:"image/jpeg"}], targetLanguage:"Swedish", measurementSystem:"metric" }
  */
 
-const GROQ_URL    = "https://api.groq.com/openai/v1/chat/completions";
-const TEXT_MODEL  = "llama-3.3-70b-versatile";          // Text och URL
-const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"; // Bilder
+const GROQ_URL     = "https://api.groq.com/openai/v1/chat/completions";
+const TEXT_MODEL   = "llama-3.3-70b-versatile";
+const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 
-// ── Sanering ──────────────────────────────────────────────────────────────────
 function sanitize(s) {
   return String(s || "")
     .replace(/\u00b0/g, " degrees")
@@ -27,110 +19,116 @@ function sanitize(s) {
     .replace(/[^\x00-\x7f]/g, " ").replace(/ +/g, " ").trim();
 }
 
-// ── JSON-schema för receptsvar ────────────────────────────────────────────────
 const SCHEMA =
-  '{"titel":"","beskrivning":"","meta":{"portioner":"","totaltid":"","svarighetsgrad":""},' +
+  '{"titel":"","beskrivning":"","detectedLanguage":"","meta":{"portioner":"","totaltid":"","svarighetsgrad":""},' +
   '"ingredienser":[{"grupp":"","mangd":"","ingrediens":""}],"steg":[""],"noteringar":""}';
 
-// ── Systemprompt (anpassad efter målspråk) ────────────────────────────────────
-function buildSystemPrompt(targetLanguage) {
-  const lang = targetLanguage || "Swedish";
-
+function buildSystemPrompt(targetLanguage, measurementSystem) {
+  const lang    = targetLanguage    || "Swedish";
+  const isMetric = (measurementSystem || "metric") === "metric";
   const isSwedish = /swed|svensk/i.test(lang);
 
   const vocabSection = isSwedish ? `
-SVENSK KÖKSSVENSKA – använd alltid dessa termer:
-- fold in / fold → vänd ner försiktigt (INTE "vik in")
-- sauté → fräs  |  simmer → låt sjuda  |  blanch → skålla
-- whisk / beat → vispa  |  knead → knåda  |  proof/rise → jäs
-- deglaze → häll i och skrapa upp stekskorpan  |  reduce → reducera / koka in
-- broil → grilla i ugnen ovanifrån  |  stir-fry → woka  |  deep-fry → fritera
-- braise → brässera  |  poach → pochera  |  render fat → smält ut fettet
-- all-purpose flour → vetemjöl  |  bread flour → manitobamjöl
-- powdered sugar → florsocker  |  brown sugar → farinsocker  |  granulated sugar → strösocker
-- heavy cream → vispgrädde  |  buttermilk → kärnmjölk  |  sour cream → crème fraîche/gräddfil
-- baking soda → bikarbonat (INTE bakpulver!)  |  baking powder → bakpulver (INTE bikarbonat!)
-- kosher/sea salt → flingsalt  |  active dry yeast → torrjäst  |  fresh yeast → färsk jäst
-- vanilla extract → vaniljextrakt  |  parchment paper → bakplåtspapper
-- skillet → stekpanna  |  dutch oven → gjutjärnsgryta  |  wire rack → galler
-- rubber spatula → slickepott  |  springform pan → springform
-- zest → rivet skal  |  pinch → en nypa  |  dash → ett stänk  |  clove (garlic) → klyfta vitlök
+SVENSK KOEKSSVENSKA - anvaend alltid dessa termer:
+- fold in / fold -> vaend ner foersiktigt (INTE "vik in")
+- saute -> fraes  |  simmer -> laat sjuda  |  blanch -> skaalla
+- whisk / beat -> vispa  |  knead -> knaada  |  proof/rise -> jaes
+- deglaze -> haell i och skrapa upp stekskorpan  |  reduce -> reducera / koka in
+- broil -> grilla i ugnen ovanifraan  |  stir-fry -> woka  |  deep-fry -> fritera
+- braise -> braessera  |  poach -> pochera  |  render fat -> smaelt ut fettet
+- all-purpose flour -> vetemjoel  |  bread flour -> manitobamjoel
+- powdered sugar -> florsocker  |  brown sugar -> farinsocker  |  granulated sugar -> stroeosocker
+- heavy cream -> vispgraedde  |  buttermilk -> kaernmjoelk  |  sour cream -> creeme fraiche/graadfil
+- baking soda -> bikarbonat (INTE bakpulver!)  |  baking powder -> bakpulver (INTE bikarbonat!)
+- kosher/sea salt -> flingsalt  |  active dry yeast -> torrjaest  |  fresh yeast -> faersk jaest
+- vanilla extract -> vaniljextrakt  |  parchment paper -> bakplaatspapper
+- skillet -> stekpanna  |  dutch oven -> gjutjaernsgryta  |  wire rack -> galler
+- rubber spatula -> slickepott  |  springform pan -> springform
+- zest -> rivet skal  |  pinch -> en nypa  |  dash -> ett staenk  |  clove (garlic) -> klyfta vitloek
+- candy thermometer -> sockertermometer  |  stand mixer -> koekkmaskin med degkrok
+- fold -> vaend ner  |  cream butter -> vispa smoeroe poeroest  |  scant -> knappt
 ` : `
 VOCABULARY GUIDANCE:
-Use natural, professional culinary terminology in ${lang}. Never translate literally — use the proper culinary term.
-Key distinctions to get right: "baking soda" ≠ "baking powder" (different leavening agents), "fold in" = gentle technique (not literal folding), "cream" (verb) = beat fat and sugar until fluffy.
-All ingredient names, technique names, and equipment names should use the standard culinary terms a professional chef in a ${lang}-speaking country would use.
+Use natural, professional culinary terminology in ${lang}. Never translate literally - use the proper culinary term.
+Key distinctions: "baking soda" != "baking powder" (different leavening agents), "fold in" = gentle technique,
+"cream" (verb) = beat fat and sugar until fluffy.
+All ingredient names, technique names, and equipment names should use the standard culinary terms a professional
+chef in a ${lang}-speaking country would use. Research correct local terms carefully.
 `;
 
-  return `You are a professional recipe translator and chef with expertise in culinary traditions worldwide. You translate recipes into ${lang} using natural, fluent language — as if the recipe was originally written in ${lang}, not translated.
+  const measureSection = isMetric ? `
+MAATTOMVANDLINGAR - till metriska enheter, alltid tillampas:
+1 cup=2.4dl | 3/4 cup=1.8dl | 2/3 cup=1.6dl | 1/2 cup=1.2dl | 1/3 cup=0.8dl | 1/4 cup=0.6dl
+1 tbsp=15ml (anvaend lokalt begrepp i ${lang}) | 1 tsp=5ml (anvaend lokalt begrepp)
+1/4 tsp = en nypa (anvaend lokalt begrepp) | 1 stick smoer=115g | 1 lb=450g | 1 oz=28g | 1 fl oz=30ml
+Temperatur F->C: (F-32)x5/9, avrunda till naermaste 5.
+300F=150C | 325F=165C | 350F=175C | 375F=190C | 400F=200C | 425F=220C | 450F=230C | 475F=245C
+` : `
+MAATTSYSTEM: IMPERIAL - behall alla matt i originalenheter.
+KONVERTERA INTE till metriska enheter. Behall cups, oz, lbs, grader F, tbsp, tsp precis som i originalet.
+`;
+
+  return `You are a professional recipe translator and culinary expert. Translate recipes into ${lang} using natural,
+fluent language as if originally written by a ${lang}-speaking chef.
 
 TRANSLATION PRINCIPLES:
 - Write natural, fluent ${lang}. Ask: "how would a ${lang} cookbook phrase this?"
-- Use active imperative voice for steps: Start each step with a command verb
-- Keep steps concise and clear
-- Preserve the original tone (casual stays casual, refined stays refined)
-- NEVER add information not in the original
-
-MEASUREMENT CONVERSIONS – always apply:
-1 cup=2.4dl | 3/4 cup=1.8dl | 2/3 cup=1.6dl | 1/2 cup=1.2dl | 1/3 cup=0.8dl | 1/4 cup=0.6dl
-1 tbsp=1 tablespoon (use local term in ${lang}) | 1 tsp=1 teaspoon (use local term)
-1/4 tsp=a pinch (use local term) | 1 stick butter=115g | 1 lb=450g | 1 oz=28g | 1 fl oz=30ml
-Temperature F→C: (F-32)×5/9, round to nearest 5.
-300F=150C | 325F=165C | 350F=175C | 375F=190C | 400F=200C | 425F=220C | 450F=230C | 475F=245C
+- Use active imperative voice for all steps (start with a command verb)
+- NEVER add information not in the original recipe
+- NEVER mix languages - all text values must be in ${lang}
+- Translate ALL ingredient names, units and techniques to proper ${lang} culinary terms
+- Pay careful attention to grammar and spelling in ${lang}
+${measureSection}
 ${vocabSection}
-JSON FORMAT RULES:
+JSON FIELD RULES:
 - titel: translated title, no "Recipe for..." prefix
-- beskrivning: 1-2 inviting sentences about the dish (empty string if original has none)
-- meta.portioner: serving info in ${lang}, e.g. "4 portions" in ${lang}
-- meta.totaltid: total time in ${lang}, e.g. "45 minutes" in ${lang}
-- meta.svarighetsgrad: difficulty in ${lang} — choose one of: Easy / Medium / Advanced (translated to ${lang})
-- ingredienser[].grupp: group heading in ${lang} if original has groups (e.g. "Filling", "Glaze")
-- ingredienser[].mangd: metric measurement + unit, empty string if no quantity
-- ingredienser[].ingrediens: ingredient name + prep note if any (e.g. "butter, softened" → local equivalent)
-- steg[]: full sentences, each starting with an imperative verb in ${lang}
-- noteringar: tips, variations, storage — translated and summarised naturally
+- beskrivning: 1-2 inviting sentences about the dish (empty string if none in original)
+- detectedLanguage: the source language of the original recipe, written in Swedish (e.g. "engelska", "franska", "italienska", "svenska", "spanska")
+- meta.portioner: serving info translated to ${lang}
+- meta.totaltid: total time translated to ${lang}
+- meta.svarighetsgrad: difficulty in ${lang} - Easy/Medium/Advanced translated naturally
+- ingredienser[].grupp: group heading in ${lang} if original has sections
+- ingredienser[].mangd: ${isMetric ? "metric" : "imperial"} measurement + unit, empty if no quantity
+- ingredienser[].ingrediens: ingredient name + prep note (e.g. "butter, softened" -> correct ${lang} term)
+- steg[]: complete sentences, each starting with imperative verb in ${lang}
+- noteringar: tips and notes translated naturally, empty string if none
 
 STRICTLY FORBIDDEN:
 - NEVER output anything outside the JSON object
-- NEVER use markdown fences or any preamble
-- NEVER mix languages (all text values must be in ${lang})`;
+- NEVER use markdown fences or preamble text
+- NEVER keep any word in the original language`;
 }
 
-// ── Användarprompt ────────────────────────────────────────────────────────────
 function buildUserPrompt(recipeText, targetLanguage, sourceLanguage) {
   const sourcePart = sourceLanguage && sourceLanguage !== "auto"
     ? `The source recipe is in ${sourceLanguage}. ` : "";
   return (
-    `${sourcePart}Translate the following recipe to ${targetLanguage || "Swedish"}.\n\n` +
+    `${sourcePart}Translate this recipe to ${targetLanguage || "Swedish"}.\n\n` +
     "Return ONLY a single JSON object matching this schema exactly:\n" +
-    SCHEMA + "\n\n" +
-    "RECIPE:\n" + recipeText.slice(0, 12000)
+    SCHEMA + "\n\nRECIPE:\n" + recipeText.slice(0, 12000)
   );
 }
 
-function buildImagePrompt(targetLanguage) {
+function buildImagePrompt(targetLanguage, measurementSystem) {
   const lang = targetLanguage || "Swedish";
+  const isMetric = (measurementSystem || "metric") === "metric";
+  const measureNote = isMetric
+    ? `Convert all measurements to metric: 1 cup=2.4dl | 1/2 cup=1.2dl | 1 tbsp=15ml | 1 tsp=5ml | 1 lb=450g | 1 oz=28g | 350F=175C | 400F=200C | 425F=220C | 450F=230C`
+    : `Keep all measurements in original imperial units (cups, oz, lbs, degrees F). Do NOT convert.`;
   return (
-    `TASK: Read the recipe in this image and output it FULLY TRANSLATED to ${lang}.\n` +
-    `The entire output — every word in every field — MUST be in ${lang}. ` +
-    `Do NOT keep any text in the original language. ` +
-    `Translate ingredient names, technique descriptions, and all instructions to ${lang}.\n\n` +
-    `Also convert all measurements to metric:\n` +
-    `1 cup=2.4dl | 1/2 cup=1.2dl | 1/4 cup=0.6dl | 1 tbsp=1 msk | 1 tsp=1 tsk | ` +
-    `1 lb=450g | 1 oz=28g | 350F=175C | 400F=200C | 425F=220C | 450F=230C\n\n` +
-    `Return ONLY a single raw JSON object (no markdown, no preamble) in this exact schema.\n` +
-    `ALL string values must be written in ${lang}:\n` +
+    `TASK: Read all recipe content from the image(s) and output it FULLY TRANSLATED to ${lang}.\n` +
+    `Every single word in every field MUST be in ${lang} - ingredient names, techniques, instructions.\n` +
+    `Do NOT keep any text in the original source language.\n\n` +
+    `${measureNote}\n\n` +
+    `Return ONLY a single raw JSON object (no markdown, no preamble).\n` +
+    `ALL string values must be in ${lang}. Fill detectedLanguage in Swedish.\n` +
     SCHEMA
   );
 }
 
-// ── Hämta webbsida server-side ────────────────────────────────────────────────
 async function fetchPageText(url) {
   const res = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; Receptbot/1.0)",
-      "Accept": "text/html,text/plain",
-    },
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; Receptbot/1.0)", "Accept": "text/html,text/plain" },
     redirect: "follow",
   });
   if (!res.ok) throw new Error("Could not fetch page: HTTP " + res.status);
@@ -145,7 +143,6 @@ async function fetchPageText(url) {
     .slice(0, 15000);
 }
 
-// ── JSON-extraktion med fallbacks ─────────────────────────────────────────────
 function extractJSON(text) {
   if (!text) throw new Error("Empty response.");
   try { return JSON.parse(text.trim()); } catch {}
@@ -156,18 +153,18 @@ function extractJSON(text) {
   throw new Error("No valid JSON in model response.");
 }
 
-// ── Validering och normalisering ──────────────────────────────────────────────
 function validateRecipe(obj) {
   if (!obj || typeof obj !== "object") throw new Error("Response is not a recipe object.");
   if (!obj.titel?.trim()) throw new Error("Recipe missing title.");
   if (!Array.isArray(obj.ingredienser) || !obj.ingredienser.length) throw new Error("Recipe missing ingredients.");
   if (!Array.isArray(obj.steg) || !obj.steg.length) throw new Error("Recipe missing steps.");
-  obj.beskrivning = obj.beskrivning || "";
-  obj.meta = obj.meta || {};
-  obj.meta.portioner = obj.meta.portioner || "";
-  obj.meta.totaltid = obj.meta.totaltid || "";
-  obj.meta.svarighetsgrad = obj.meta.svarighetsgrad || "";
-  obj.noteringar = obj.noteringar || "";
+  obj.beskrivning      = obj.beskrivning || "";
+  obj.detectedLanguage = obj.detectedLanguage || "";
+  obj.meta             = obj.meta || {};
+  obj.meta.portioner       = obj.meta.portioner || "";
+  obj.meta.totaltid        = obj.meta.totaltid || "";
+  obj.meta.svarighetsgrad  = obj.meta.svarighetsgrad || "";
+  obj.noteringar       = obj.noteringar || "";
   obj.ingredienser = obj.ingredienser.map(i => ({
     grupp: i.grupp || "", mangd: i.mangd || "", ingrediens: i.ingrediens || ""
   }));
@@ -175,45 +172,26 @@ function validateRecipe(obj) {
   return obj;
 }
 
-// ── Groq API-anrop ────────────────────────────────────────────────────────────
 async function callGroq({ model, messages, useJsonMode = true }) {
   const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) throw new Error("GROQ_API_KEY not configured in Netlify environment variables.");
-
-  const body = {
-    model,
-    messages,
-    temperature: 0.15,
-    max_tokens: 3000,
-  };
-  // JSON mode: forces valid JSON output — much more reliable
-  if (useJsonMode) {
-    body.response_format = { type: "json_object" };
-  }
-
+  if (!apiKey) throw new Error("GROQ_API_KEY not configured.");
+  const body = { model, messages, temperature: 0.10, max_tokens: 3500 };
+  if (useJsonMode) body.response_format = { type: "json_object" };
   const res = await fetch(GROQ_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + apiKey,
-    },
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
     body: JSON.stringify(body),
   });
-
   const data = await res.json();
-
   if (!res.ok) {
-    const msg = data?.error?.message || "Groq API error " + res.status;
-    if (res.status === 429) throw new Error("Gratisgränsen nådd tillfälligt. Vänta en minut och försök igen.");
-    throw new Error(msg);
+    if (res.status === 429) throw new Error("Gratisgranssen naadds. Vaenta en minut och foersoek igen.");
+    throw new Error(data?.error?.message || "Groq API error " + res.status);
   }
-
   const text = data?.choices?.[0]?.message?.content;
   if (!text) throw new Error("Empty response from Groq.");
   return text;
 }
 
-// ── Netlify-hanterare ─────────────────────────────────────────────────────────
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST")
     return { statusCode: 405, body: JSON.stringify({ ok: false, error: "Method not allowed" }) };
@@ -225,30 +203,38 @@ exports.handler = async (event) => {
     try { body = JSON.parse(event.body || "{}"); }
     catch { return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "Invalid JSON body" }) }; }
 
-    const { type, content, url, image, imageMime, targetLanguage, sourceLanguage } = body;
-    const tLang = (targetLanguage || "Swedish").trim();
-    const sLang = sourceLanguage || "auto";
+    const { type, content, url, images, targetLanguage, sourceLanguage, measurementSystem } = body;
+    const tLang   = (targetLanguage    || "Swedish").trim();
+    const sLang   = sourceLanguage     || "auto";
+    const mSys    = measurementSystem  || "metric";
 
-    // ── Bildöversättning ──────────────────────────────────────────────────────
+    // ── Bildoversattning ──────────────────────────────────────────────────────
     if (type === "image") {
-      if (!image || image.length < 100)
-        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "No image received." }) };
-      if (image.length > 4_000_000) // Frontend compresses to ~1600px JPEG before sending
-        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "Bilden är för stor. Försök med ett foto med lägre upplösning." }) };
+      if (!images || !Array.isArray(images) || images.length === 0)
+        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "No images received." }) };
+      if (images.length > 4)
+        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "Max 4 bilder." }) };
 
-      const imagePrompt = buildImagePrompt(tLang);
+      // Kontrollera total storlek (Netlify 6MB limit, var foersiktig)
+      const totalSize = images.reduce((sum, img) => sum + (img.b64 ? img.b64.length : 0), 0);
+      if (totalSize > 5_000_000)
+        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "Bilderna aar foer stora totalt. Foersoek med faerre eller mindre bilder." }) };
+
+      const imagePrompt = buildImagePrompt(tLang, mSys);
+      const userContent = [
+        ...images.map(img => ({
+          type: "image_url",
+          image_url: { url: `data:${img.mime || "image/jpeg"};base64,${img.b64}` }
+        })),
+        { type: "text", text: imagePrompt },
+      ];
+
       const responseText = await callGroq({
         model: VISION_MODEL,
         useJsonMode: true,
         messages: [
-          { role: "system", content: buildSystemPrompt(tLang) },
-          {
-            role: "user",
-            content: [
-              { type: "image_url", image_url: { url: `data:${imageMime||"image/jpeg"};base64,${image}` } },
-              { type: "text", text: imagePrompt },
-            ],
-          }
+          { role: "system", content: buildSystemPrompt(tLang, mSys) },
+          { role: "user",   content: userContent },
         ],
       });
 
@@ -256,7 +242,7 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true, recipe }) };
     }
 
-    // ── Text-/URL-översättning ────────────────────────────────────────────────
+    // ── Text-/URL-oversattning ────────────────────────────────────────────────
     if (type === "text") {
       if (!content || content.trim().length < 20)
         return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "Recipe text too short." }) };
@@ -281,7 +267,7 @@ exports.handler = async (event) => {
       model: TEXT_MODEL,
       useJsonMode: true,
       messages: [
-        { role: "system", content: buildSystemPrompt(tLang) },
+        { role: "system", content: buildSystemPrompt(tLang, mSys) },
         { role: "user",   content: buildUserPrompt(recipeText, tLang, sLang) },
       ],
     });
@@ -290,7 +276,7 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers, body: JSON.stringify({ ok: true, recipe }) };
 
   } catch (err) {
-    console.error("[translate-groq-v3]", err.message);
+    console.error("[translate-v4]", err.message);
     return { statusCode: 500, headers, body: JSON.stringify({ ok: false, error: err.message }) };
   }
 };
