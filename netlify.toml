@@ -2,6 +2,13 @@
   publish = "public"
   functions = "netlify/functions"
 
+[functions]
+  node_bundler = "esbuild"
+
+# Längre timeout för vision-anrop (bilder tar mer tid)
+[functions."translate"]
+  timeout = 30
+
 # Route /api/translate to the serverless function
 [[redirects]]
   from = "/api/translate"
