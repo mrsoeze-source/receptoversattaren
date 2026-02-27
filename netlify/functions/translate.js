@@ -1,14 +1,14 @@
 /**
- * Netlify Function: /api/translate  (Groq-version v4)
+ * Netlify Function: /api/translate  (Mistral-version v5)
  * POST body variants:
  *   { type:"text",  content:"...", targetLanguage:"Swedish", sourceLanguage:"auto", measurementSystem:"metric" }
  *   { type:"url",   url:"https://...", targetLanguage:"Swedish", measurementSystem:"metric" }
  *   { type:"image", images:[{b64:"...",mime:"image/jpeg"}], targetLanguage:"Swedish", measurementSystem:"metric" }
  */
 
-const GROQ_URL     = "https://api.groq.com/openai/v1/chat/completions";
-const TEXT_MODEL   = "llama-3.3-70b-versatile";
-const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+const MISTRAL_URL  = "https://api.mistral.ai/v1/chat/completions";
+const TEXT_MODEL   = "mistral-small-latest";   // gratis, bra för text
+const VISION_MODEL = "pixtral-12b";             // gratis, stödjer bilder
 
 function sanitize(s) {
   return String(s || "")
@@ -172,20 +172,34 @@ function validateRecipe(obj) {
   return obj;
 }
 
-async function callGroq({ model, messages, useJsonMode = true }) {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) throw new Error("GROQ_API_KEY not configured.");
+async function callMistral({ model, messages, useJsonMode = true }) {
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) throw new Error("MISTRAL_API_KEY not configured in Netlify.");
   const body = { model, messages, temperature: 0.10, max_tokens: 3500 };
   if (useJsonMode) body.response_format = { type: "json_object" };
-  const res = await fetch(GROQ_URL, {
+  const res = await fetch(MISTRAL_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
     body: JSON.stringify(body),
   });
   const data = await res.json();
   if (!res.ok) {
-    if (res.status === 429) throw new Error("Gratisgranssen naadds. Vaenta en minut och foersoek igen.");
-    throw new Error(data?.error?.message || "Groq API error " + res.status);
+    const errCode = data?.error?.code || "";
+    const errMsg  = data?.error?.message || "";
+    if (errCode === "usage_exceeded" || errMsg.includes("usage_exceeded") || res.status === 402) {
+      throw new Error(
+        "Mistral API: gratiskvoten ar slut. " +
+        "Ga till console.mistral.ai och kontrollera din anvandning, " +
+        "eller skapa ett nytt konto med ny MISTRAL_API_KEY i Netlify."
+      );
+    }
+    if (res.status === 429) {
+      throw new Error("Mistral API: for manga anrop. Vanta en minut och forsok igen.");
+    }
+    if (res.status === 401) {
+      throw new Error("Mistral API: ogiltig nyckel. Kontrollera MISTRAL_API_KEY i Netlify.");
+    }
+    throw new Error(errMsg || "Mistral API error " + res.status);
   }
   const text = data?.choices?.[0]?.message?.content;
   if (!text) throw new Error("Empty response from Groq.");
@@ -229,7 +243,7 @@ exports.handler = async (event) => {
         { type: "text", text: imagePrompt },
       ];
 
-      const responseText = await callGroq({
+      const responseText = await callMistral({
         model: VISION_MODEL,
         useJsonMode: true,
         messages: [
@@ -263,7 +277,7 @@ exports.handler = async (event) => {
       recipeText = sanitize(content);
     }
 
-    const responseText = await callGroq({
+    const responseText = await callMistral({
       model: TEXT_MODEL,
       useJsonMode: true,
       messages: [
@@ -276,7 +290,7 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers, body: JSON.stringify({ ok: true, recipe }) };
 
   } catch (err) {
-    console.error("[translate-v4]", err.message);
+    console.error("[translate-mistral-v5]", err.message);
     return { statusCode: 500, headers, body: JSON.stringify({ ok: false, error: err.message }) };
   }
 };
