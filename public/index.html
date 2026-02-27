@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Receptöversättaren</title>
+  <!-- APP_SECRET_PLACEHOLDER ersätts av netlify.toml build-kommando -->
+  <meta name="app-secret" content="APP_SECRET_VALUE">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <style>
@@ -104,7 +106,13 @@ function generatePDF(recipe,T){
 
 // ── Backend ───────────────────────────────────────────────────────────────────
 async function callBackend(payload){
-  const res=await fetch("/api/translate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  // APP_SECRET injiceras av Netlify vid bygget via _headers eller meta-tag,
+  // men enklaste sättet är att läsa den från en meta-tagg satt av Netlify.
+  // Utan APP_SECRET i Netlify fungerar appen ändå — checken är valfri.
+  const secret = document.querySelector("meta[name=app-secret]")?.content || "";
+  const hdrs = {"Content-Type":"application/json"};
+  if (secret) hdrs["X-App-Secret"] = secret;
+  const res=await fetch("/api/translate",{method:"POST",headers:hdrs,body:JSON.stringify(payload)});
   const data=await res.json();
   if(!data.ok)throw new Error(data.error||"Server error "+res.status);
   return data.recipe;
