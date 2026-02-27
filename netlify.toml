@@ -1,6 +1,8 @@
 [build]
   publish = "public"
   functions = "netlify/functions"
+  # Injicera APP_SECRET från Netlify Environment Variables in i HTML vid bygget
+  command = "sed -i 's|APP_SECRET_VALUE|'\"$APP_SECRET\"'|g' public/index.html"
 
 [functions]
   node_bundler = "esbuild"
