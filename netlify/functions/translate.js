@@ -206,16 +206,64 @@ async function callMistral({ model, messages, useJsonMode = true }) {
   return text;
 }
 
+// ── Tillaten ursprung ─────────────────────────────────────────────────────────
+// Lagg till din Netlify-domän här (och ev. localhost för lokal utveckling)
+const ALLOWED_ORIGINS = [
+  process.env.SITE_URL,                        // sätts automatiskt av Netlify
+  process.env.URL,                             // primär deploy-URL i Netlify
+  "http://localhost:8888",                     // netlify dev
+  "http://localhost:3000",
+].filter(Boolean);
+
 exports.handler = async (event) => {
+  const origin = event.headers["origin"] || "";
+  const referer = event.headers["referer"] || "";
+
+  // CORS preflight
+  if (event.httpMethod === "OPTIONS") {
+    return {
+      statusCode: 204,
+      headers: {
+        "Access-Control-Allow-Origin": ALLOWED_ORIGINS.includes(origin) ? origin : "null",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, X-App-Secret",
+        "Access-Control-Max-Age": "86400",
+      },
+      body: "",
+    };
+  }
+
   if (event.httpMethod !== "POST")
     return { statusCode: 405, body: JSON.stringify({ ok: false, error: "Method not allowed" }) };
 
-  const headers = { "Content-Type": "application/json" };
+  // ── CORS: blockera anrop fran okanda ursprung ──────────────────────────────
+  const originOk = ALLOWED_ORIGINS.some(o => origin.startsWith(o) || referer.startsWith(o));
+  if (!originOk && origin !== "") {
+    // origin === "" kan vara server-till-server (curl etc) — blockeras av secret-check nedan
+    console.warn("[translate] Blocked origin:", origin);
+    return { statusCode: 403, body: JSON.stringify({ ok: false, error: "Forbidden" }) };
+  }
+
+  // ── Delad hemlighet: frontend skickar X-App-Secret ─────────────────────────
+  // Satt APP_SECRET i Netlify Environment Variables (minst 32 tecken, slumpmässigt)
+  const appSecret = process.env.APP_SECRET;
+  if (appSecret) {
+    const sentSecret = event.headers["x-app-secret"] || "";
+    if (sentSecret !== appSecret) {
+      console.warn("[translate] Invalid or missing X-App-Secret");
+      return { statusCode: 403, body: JSON.stringify({ ok: false, error: "Forbidden" }) };
+    }
+  }
+
+  const corsHeaders = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": ALLOWED_ORIGINS.includes(origin) ? origin : (ALLOWED_ORIGINS[0] || "*"),
+  };
 
   try {
     let body;
     try { body = JSON.parse(event.body || "{}"); }
-    catch { return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "Invalid JSON body" }) }; }
+    catch { return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ ok: false, error: "Invalid JSON body" }) }; }
 
     const { type, content, url, images, targetLanguage, sourceLanguage, measurementSystem } = body;
     const tLang   = (targetLanguage    || "Swedish").trim();
@@ -225,14 +273,14 @@ exports.handler = async (event) => {
     // ── Bildoversattning ──────────────────────────────────────────────────────
     if (type === "image") {
       if (!images || !Array.isArray(images) || images.length === 0)
-        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "No images received." }) };
+        return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ ok: false, error: "No images received." }) };
       if (images.length > 4)
-        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "Max 4 bilder." }) };
+        return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ ok: false, error: "Max 4 bilder." }) };
 
       // Kontrollera total storlek (Netlify 6MB limit, var foersiktig)
       const totalSize = images.reduce((sum, img) => sum + (img.b64 ? img.b64.length : 0), 0);
       if (totalSize > 5_000_000)
-        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "Bilderna aar foer stora totalt. Foersoek med faerre eller mindre bilder." }) };
+        return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ ok: false, error: "Bilderna aar foer stora totalt. Foersoek med faerre eller mindre bilder." }) };
 
       const imagePrompt = buildImagePrompt(tLang, mSys);
       const userContent = [
@@ -253,20 +301,20 @@ exports.handler = async (event) => {
       });
 
       const recipe = validateRecipe(extractJSON(responseText));
-      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, recipe }) };
+      return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: true, recipe }) };
     }
 
     // ── Text-/URL-oversattning ────────────────────────────────────────────────
     if (type === "text") {
       if (!content || content.trim().length < 20)
-        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "Recipe text too short." }) };
+        return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ ok: false, error: "Recipe text too short." }) };
       if (content.length > 60000)
-        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "Input too long (max 60 000 characters)." }) };
+        return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ ok: false, error: "Input too long (max 60 000 characters)." }) };
     } else if (type === "url") {
       if (!url || !/^https?:\/\/.+/.test(url))
-        return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "Invalid URL." }) };
+        return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ ok: false, error: "Invalid URL." }) };
     } else {
-      return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: "type must be text, url or image" }) };
+      return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ ok: false, error: "type must be text, url or image" }) };
     }
 
     let recipeText;
@@ -287,10 +335,10 @@ exports.handler = async (event) => {
     });
 
     const recipe = validateRecipe(extractJSON(responseText));
-    return { statusCode: 200, headers, body: JSON.stringify({ ok: true, recipe }) };
+    return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: true, recipe }) };
 
   } catch (err) {
     console.error("[translate-mistral-v5]", err.message);
-    return { statusCode: 500, headers, body: JSON.stringify({ ok: false, error: err.message }) };
+    return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ ok: false, error: err.message }) };
   }
 };
