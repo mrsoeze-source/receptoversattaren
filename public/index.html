@@ -71,13 +71,13 @@ function generatePDF(recipe,T){
   const mt=recipe.meta||{};
   const ms=[mt.portioner,mt.totaltid&&"Totalt: "+mt.totaltid,mt.svarighetsgrad].filter(Boolean).join("   |   ");
   if(ms)add(ms,9,false,[130,120,110],0,6);
-  add("",8);add(T.ingredients,13,true,[184,92,56],0,4);
+  add("",8);add(getRecipeLabels(recipe._tLang||"Swedish").ingredients,13,true,[184,92,56],0,4);
   let lg="";
   for(const ing of(recipe.ingredienser||[])){
     if(ing.grupp&&ing.grupp!==lg){add(ing.grupp.toUpperCase(),8,true,[107,98,88],0,8);lg=ing.grupp;}
     add("- "+(ing.mangd?ing.mangd+"   ":"")+(ing.ingrediens||""),10,false,[30,30,30],8,0);
   }
-  add("",8);add(T.steps,13,true,[184,92,56],0,4);
+  add("",8);add(getRecipeLabels(recipe._tLang||"Swedish").steps,13,true,[184,92,56],0,4);
   (recipe.steg||[]).forEach((s,i)=>add((i+1)+".  "+s,10,false,[30,30,30],8,4));
   if(recipe.noteringar){add("",8);add(T.notes,11,true,[184,92,56],0,0);add(recipe.noteringar,10,false,[107,98,88],8,4);}
   const allOps=[];let pi=0,y=PH-M;
@@ -157,12 +157,12 @@ function buildPlainText(result,srcUrl,scale,T){
   if(result.beskrivning)t+=result.beskrivning+"\n";
   const port=scale!==1&&m.portioner?scalePortioner(m.portioner,scale):m.portioner;
   [port,m.totaltid,m.svarighetsgrad].filter(Boolean).forEach(v=>t+=v+"   ");
-  t+="\n\n"+T.ingredients.toUpperCase()+"\n";let lg="";
+  t+="\n\n"+getRecipeLabels(result._tLang||tLang).ingredients.toUpperCase()+"\n";let lg="";
   for(const i of(result.ingredienser||[])){
     if(i.grupp&&i.grupp!==lg){t+="\n"+i.grupp.toUpperCase()+"\n";lg=i.grupp;}
     t+="- "+(i.mangd?scaleAmount(i.mangd,scale)+"  ":"")+(i.ingrediens||"")+"\n";
   }
-  t+="\n"+T.steps.toUpperCase()+"\n";
+  t+="\n"+getRecipeLabels(result._tLang||tLang).steps.toUpperCase()+"\n";
   (result.steg||[]).forEach((s,i)=>{t+=(i+1)+". "+s+"\n";});
   if(result.noteringar)t+="\n"+T.notes.toUpperCase()+"\n"+result.noteringar;
   if(srcUrl)t+="\n\n"+T.source+srcUrl;
@@ -172,6 +172,31 @@ function buildPlainText(result,srcUrl,scale,T){
 // ── Constants ─────────────────────────────────────────────────────────────────
 const F="#2d4a3e",T2="#b85c38",G="#c9a84c",CR="#f5f0e8",PA="#ede6d6",WA="#faf7f2",MI="#6b6258",BO="#d4c9b5";
 const LANGS=["Swedish","English","Danish","Norwegian","Finnish","German","French","Spanish","Italian","Dutch","Portuguese","Polish","Russian","Greek","Turkish","Japanese","Chinese","Korean","Thai","Arabic","Hindi"];
+// Labels used inside the recipe result — must follow TARGET language, not UI language
+const RECIPE_LABELS={
+  "Swedish":   {ingredients:"Ingredienser",  steps:"Gör så här",       stepWord:"Steg"},
+  "English":   {ingredients:"Ingredients",   steps:"Instructions",     stepWord:"Step"},
+  "Danish":    {ingredients:"Ingredienser",  steps:"Sådan gør du",     stepWord:"Trin"},
+  "Norwegian": {ingredients:"Ingredienser",  steps:"Slik gjør du det", stepWord:"Trinn"},
+  "Finnish":   {ingredients:"Ainesosat",     steps:"Valmistus",        stepWord:"Vaihe"},
+  "German":    {ingredients:"Zutaten",       steps:"Zubereitung",      stepWord:"Schritt"},
+  "French":    {ingredients:"Ingrédients",   steps:"Préparation",      stepWord:"Étape"},
+  "Spanish":   {ingredients:"Ingredientes",  steps:"Preparación",      stepWord:"Paso"},
+  "Italian":   {ingredients:"Ingredienti",   steps:"Preparazione",     stepWord:"Fase"},
+  "Dutch":     {ingredients:"Ingrediënten",  steps:"Bereiding",        stepWord:"Stap"},
+  "Portuguese":{ingredients:"Ingredientes",  steps:"Modo de preparo",  stepWord:"Passo"},
+  "Polish":    {ingredients:"Składniki",     steps:"Przygotowanie",    stepWord:"Krok"},
+  "Russian":   {ingredients:"Ингредиенты",   steps:"Приготовление",    stepWord:"Шаг"},
+  "Greek":     {ingredients:"Υλικά",         steps:"Παρασκευή",        stepWord:"Βήμα"},
+  "Turkish":   {ingredients:"Malzemeler",    steps:"Hazırlanışı",      stepWord:"Adım"},
+  "Japanese":  {ingredients:"材料",           steps:"作り方",            stepWord:"手順"},
+  "Chinese":   {ingredients:"食材",           steps:"做法",              stepWord:"步骤"},
+  "Korean":    {ingredients:"재료",           steps:"만드는 법",         stepWord:"단계"},
+  "Thai":      {ingredients:"ส่วนผสม",        steps:"วิธีทำ",            stepWord:"ขั้นตอน"},
+  "Arabic":    {ingredients:"المكونات",       steps:"طريقة التحضير",    stepWord:"خطوة"},
+  "Hindi":     {ingredients:"सामग्री",         steps:"विधि",              stepWord:"चरण"},
+};
+function getRecipeLabels(lang){ return RECIPE_LABELS[lang]||RECIPE_LABELS["English"]; }
 const SS={padding:"7px 10px",border:"1px solid #d4c9b5",borderRadius:5,fontFamily:"Georgia,serif",fontSize:13,color:"#2a2a2a",background:"#f5f0e8",outline:"none",cursor:"pointer",width:"100%"};
 const MAX_IMGS=4;
 const EXAMPLE=`Chocolate Chip Cookies (24 cookies)
@@ -322,11 +347,12 @@ function App(){
 
   // Build flat segment list from recipe
   function buildTtsSegments(rec, targetLang) {
+    const RL = getRecipeLabels(targetLang);
     const segs = [];
     if (rec.titel)        segs.push({text:rec.titel,                    type:'title',  idx:null});
     if (rec.beskrivning)  segs.push({text:rec.beskrivning,              type:'desc',   idx:null});
     if ((rec.ingredienser||[]).length) {
-      segs.push({text:T.ttsIngHeading,                                  type:'head',   idx:null});
+      segs.push({text:RL.ingredients,                                   type:'head',   idx:null});
       (rec.ingredienser||[]).forEach((ing,i) => {
         const t = [ing.mangd, ing.ingrediens].filter(Boolean).join(' ');
         if (t.trim()) segs.push({text:t, type:'ing', idx:i});
@@ -334,7 +360,7 @@ function App(){
     }
     if ((rec.steg||[]).length) {
       (rec.steg||[]).forEach((s,i) =>
-        segs.push({text:(T.ttsStepWord+' '+(i+1)+'. '+s), type:'step', idx:i})
+        segs.push({text:(RL.stepWord+' '+(i+1)+'. '+s), type:'step', idx:i})
       );
     }
     if (rec.noteringar)   segs.push({text:rec.noteringar,               type:'notes',  idx:null});
@@ -352,14 +378,45 @@ function App(){
   // Speak one segment, call onEnd when done
   function speakSegment(seg, langCode, onEnd) {
     if (!window.speechSynthesis) return;
-    const u = new SpeechSynthesisUtterance(seg.text);
-    u.lang = langCode;
-    const voice = getBestVoice(langCode);
-    if (voice) u.voice = voice;
-    u.rate = 0.92;
-    u.onend  = onEnd;
-    u.onerror = onEnd;
-    window.speechSynthesis.speak(u);
+    // Split long text into sentences to work around Chrome's ~15s cutoff bug.
+    // Chrome silently stops speaking utterances longer than ~200-250 chars.
+    const MAX = 220;
+    const text = seg.text || '';
+    const chunks = [];
+    if (text.length <= MAX) {
+      chunks.push(text);
+    } else {
+      // Split on sentence boundaries first, then hard-cap remaining
+      const sentences = text.match(/[^.!?]+[.!?]*\s*/g) || [text];
+      let buf = '';
+      for (const s of sentences) {
+        if ((buf + s).length > MAX && buf) { chunks.push(buf.trim()); buf = s; }
+        else buf += s;
+      }
+      if (buf.trim()) chunks.push(buf.trim());
+    }
+
+    // Speak all chunks in sequence; only fire onEnd after the last one.
+    // onerror does NOT call onEnd — cancel() fires onerror with "interrupted"
+    // which previously caused the next segment to play twice.
+    let ci = 0;
+    function speakChunk() {
+      if (ci >= chunks.length) { onEnd(); return; }
+      const u = new SpeechSynthesisUtterance(chunks[ci]);
+      u.lang = langCode;
+      const voice = getBestVoice(langCode);
+      if (voice) u.voice = voice;
+      u.rate = 0.92;
+      u.onend = () => { ci++; speakChunk(); };
+      u.onerror = (e) => {
+        // "interrupted" / "canceled" = we cancelled deliberately, don't advance
+        if (e.error === 'interrupted' || e.error === 'canceled') return;
+        // Real error: skip to next segment
+        onEnd();
+      };
+      window.speechSynthesis.speak(u);
+    }
+    speakChunk();
   }
 
   // Advance through segments
@@ -496,6 +553,7 @@ function App(){
         setSrcUrl(null);
       }
       recipe._fetchedAt=new Date().toLocaleDateString("sv-SE");
+      recipe._tLang=tLang;
       setResult(recipe);setStatus("");
     }catch(e){setStatus(e.message);}
     finally{setBusy(false);}
@@ -723,14 +781,14 @@ function App(){
             h("span",{style:{fontFamily:"sans-serif",fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",color:ttsPlaying?T2:MI,transition:"color 0.2s"}},
               ttsPlaying||ttsPaused
                 ? (ttsSegsRef.current[ttsIdx]?.type==='step'
-                    ? T.ttsStepWord+' '+(ttsSegsRef.current[ttsIdx]?.idx+1)+' '+T.ttsOf+' '+(result.steg||[]).length
+                    ? getRecipeLabels(tLang).stepWord+' '+(ttsSegsRef.current[ttsIdx]?.idx+1)+' '+T.ttsOf+' '+(result.steg||[]).length
                     : ttsSegsRef.current[ttsIdx]?.type==='ing'
-                    ? T.ttsIngHeading+' '+(ttsSegsRef.current[ttsIdx]?.idx+1)+' '+T.ttsOf+' '+(result.ingredienser||[]).length
+                    ? getRecipeLabels(tLang).ingredients+' '+(ttsSegsRef.current[ttsIdx]?.idx+1)+' '+T.ttsOf+' '+(result.ingredienser||[]).length
                     : ttsSegsRef.current[ttsIdx]?.type==='title'
                     ? (result.titel||'')
                     : ttsSegsRef.current[ttsIdx]?.type==='notes'||ttsSegsRef.current[ttsIdx]?.type==='notes-header'
                     ? (T.notes||'Tips')
-                    : T.ingredients)
+                    : getRecipeLabels(tLang).ingredients)
                 : T.ttsPlay
             ),
             (ttsPlaying||ttsPaused)&&h("div",{style:{height:3,background:BO,borderRadius:2,overflow:"hidden"}},
@@ -759,7 +817,7 @@ function App(){
           ),
 
           h("div",{style:{display:"flex",alignItems:"center",gap:12,margin:"0 0 14px"}},
-            h("span",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",fontSize:18,color:T2,whiteSpace:"nowrap"}},T.ingredients),
+            h("span",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",fontSize:18,color:T2,whiteSpace:"nowrap"}},getRecipeLabels(tLang).ingredients),
             h("div",{style:{flex:1,height:1,background:BO}})
           ),
           h("ul",{style:{listStyle:"none",padding:0,margin:"0 0 8px"}},
@@ -782,7 +840,7 @@ function App(){
           ),
 
           h("div",{style:{display:"flex",alignItems:"center",gap:12,margin:"26px 0 14px"}},
-            h("span",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",fontSize:18,color:T2,whiteSpace:"nowrap"}},T.steps),
+            h("span",{style:{fontFamily:"'Palatino Linotype','Georgia',serif",fontStyle:"italic",fontSize:18,color:T2,whiteSpace:"nowrap"}},getRecipeLabels(tLang).steps),
             h("div",{style:{flex:1,height:1,background:BO}})
           ),
           h("ol",{style:{listStyle:"none",padding:0,margin:0}},
