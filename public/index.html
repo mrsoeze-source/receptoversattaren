@@ -766,17 +766,18 @@ function App(){
             (result.ingredienser||[]).map((ing,i)=>{
               const grp=ing.grupp||"",prev=result.ingredienser[i-1];
               const newG=grp&&(!prev||(prev.grupp||"")!==grp);
-              // Ingredient row element (shared for both newG and normal cases)
-              const ingLi=h("li",{key:i,style:{display:"grid",gridTemplateColumns:mobile?"86px 1fr":"110px 1fr",padding:"6px 0",fontFamily:"sans-serif",fontSize:mobile?12:13,borderBottom:"1px dotted "+BO,alignItems:"baseline",gap:8,borderRadius:4,background:(ttsPlaying||ttsPaused)&&ttsSegsRef.current[ttsIdx]?.type==='ing'&&ttsSegsRef.current[ttsIdx]?.idx===i?"rgba(184,92,56,0.10)":"transparent",transition:"background 0.3s",marginLeft:-4,paddingLeft:4,cursor:(ttsPlaying||ttsPaused)?"pointer":"default"},id:"tts-ing-"+i,onClick:()=>{if(!(ttsPlaying||ttsPaused))return;const segI=ttsSegsRef.current.findIndex(s=>s.type==='ing'&&s.idx===i);if(segI<0)return;ttsIdxRef.current=segI;setTtsIdx(segI);window.speechSynthesis.cancel();ttsActiveRef.current=true;setTtsPlaying(true);setTtsPaused(false);speakSegment(ttsSegsRef.current[segI],LANG_TO_BCP47[tLang]||'sv-SE',()=>ttsAdvance(segI+1,ttsSegsRef.current,LANG_TO_BCP47[tLang]||'sv-SE'));}},
-                    h("span",{style:{fontWeight:700,color:(ttsPlaying||ttsPaused)&&ttsSegsRef.current[ttsIdx]?.type==='ing'&&ttsSegsRef.current[ttsIdx]?.idx===i?T2:F,transition:"color 0.3s"}},scaleAmount(ing.mangd,scale)||""),
-                    h("span",{style:{color:(ttsPlaying||ttsPaused)&&ttsSegsRef.current[ttsIdx]?.type==='ing'&&ttsSegsRef.current[ttsIdx]?.idx===i?"#2a2a2a":"#2a2a2a",fontWeight:(ttsPlaying||ttsPaused)&&ttsSegsRef.current[ttsIdx]?.type==='ing'&&ttsSegsRef.current[ttsIdx]?.idx===i?600:400}},ing.ingrediens)
-                  );
-              // Return group header + ingredient row, or just ingredient row
-              if(newG) return [
+              const ingActive=(ttsPlaying||ttsPaused)&&ttsSegsRef.current[ttsIdx]?.type==='ing'&&ttsSegsRef.current[ttsIdx]?.idx===i;
+              const ingRow=h("li",{key:"i"+i,id:"tts-ing-"+i,
+                style:{display:"grid",gridTemplateColumns:mobile?"86px 1fr":"110px 1fr",padding:"6px 0",fontFamily:"sans-serif",fontSize:mobile?12:13,borderBottom:"1px dotted "+BO,alignItems:"baseline",gap:8,borderRadius:4,background:ingActive?"rgba(184,92,56,0.10)":"transparent",transition:"background 0.3s",marginLeft:-4,paddingLeft:4,cursor:(ttsPlaying||ttsPaused)?"pointer":"default"},
+                onClick:()=>{if(!(ttsPlaying||ttsPaused))return;const segI=ttsSegsRef.current.findIndex(s=>s.type==='ing'&&s.idx===i);if(segI<0)return;ttsIdxRef.current=segI;setTtsIdx(segI);window.speechSynthesis.cancel();ttsActiveRef.current=true;setTtsPlaying(true);setTtsPaused(false);speakSegment(ttsSegsRef.current[segI],LANG_TO_BCP47[tLang]||'sv-SE',()=>ttsAdvance(segI+1,ttsSegsRef.current,LANG_TO_BCP47[tLang]||'sv-SE'));}},
+                h("span",{style:{fontWeight:700,color:ingActive?T2:F,transition:"color 0.3s"}},scaleAmount(ing.mangd,scale)||""),
+                h("span",{style:{color:"#2a2a2a",fontWeight:ingActive?600:400}},ing.ingrediens)
+              );
+              if(newG) return h(React.Fragment,{key:"f"+i},
                 h("li",{key:"g"+i,style:{padding:"12px 0 3px",fontFamily:"sans-serif",fontSize:9,fontWeight:700,letterSpacing:"0.17em",textTransform:"uppercase",color:T2,borderTop:"1px solid "+BO}},grp),
-                ingLi
-              ];
-              return ingLi;
+                ingRow
+              );
+              return ingRow;
             })
           ),
 
