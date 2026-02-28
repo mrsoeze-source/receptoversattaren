@@ -218,480 +218,156 @@ Bake 9-11 minutes until golden brown. Cool on wire rack.`;
 
 // ── SVG ───────────────────────────────────────────────────────────────────────
 function SumiIllustration(){
-  const svg = `<svg viewBox="0 0 1200 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+  const svg = `<svg viewBox="0 0 1200 240" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;opacity:0.93;">
   <defs>
-    <!-- Felt texture for puppet skin -->
-    <filter id="felt" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
-      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" seed="2" result="noise"/>
-      <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise"/>
-      <feComposite in="SourceGraphic" in2="grayNoise" operator="arithmetic" k1="0" k2="0.88" k3="0.14" k4="0"/>
+    <filter id="ink" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.2" xChannelSelector="R" yChannelSelector="G"/>
     </filter>
-    <!-- Felt for white/coat areas -->
-    <filter id="feltWhite" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
-      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="4" seed="7" result="noise"/>
-      <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise"/>
-      <feComposite in="SourceGraphic" in2="grayNoise" operator="arithmetic" k1="0" k2="0.92" k3="0.09" k4="0"/>
-    </filter>
-    <!-- Mustache felt — cream colored, more pronounced texture -->
-    <filter id="feltMust" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
-      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="5" seed="12" result="noise"/>
-      <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise"/>
-      <feComposite in="SourceGraphic" in2="grayNoise" operator="arithmetic" k1="0" k2="0.82" k3="0.2" k4="0"/>
-    </filter>
-    <!-- Soft glow -->
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="6" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <!-- Drop shadow -->
-    <filter id="shad">
-      <feDropShadow dx="5" dy="8" stdDeviation="10" flood-color="rgba(0,0,0,0.5)"/>
-    </filter>
-    <filter id="shadSm">
-      <feDropShadow dx="2" dy="3" stdDeviation="5" flood-color="rgba(0,0,0,0.35)"/>
-    </filter>
-    <filter id="blr">
-      <feGaussianBlur stdDeviation="4"/>
-    </filter>
-    <!-- Kitchen bg gradient -->
-    <linearGradient id="kitchenBg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#6b4e2a"/>
-      <stop offset="60%" stop-color="#8b6535"/>
-      <stop offset="100%" stop-color="#4a3018"/>
-    </linearGradient>
-    <radialGradient id="spotLight" cx="50%" cy="25%" r="55%">
-      <stop offset="0%" stop-color="#d4a855" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#6b4e2a" stop-opacity="0"/>
-    </radialGradient>
-    <!-- Face gradient - muppet felt peach/pink -->
-    <radialGradient id="faceGrad" cx="44%" cy="36%" r="58%">
-      <stop offset="0%" stop-color="#e8a878"/>
-      <stop offset="55%" stop-color="#d4885a"/>
-      <stop offset="100%" stop-color="#b86838"/>
-    </radialGradient>
-    <!-- Eyeball gradient -->
-    <radialGradient id="eyeGrad" cx="38%" cy="35%" r="60%">
-      <stop offset="0%" stop-color="#f0ece4"/>
-      <stop offset="100%" stop-color="#d8d0c4"/>
-    </radialGradient>
-    <clipPath id="sc"><rect width="1200" height="300"/></clipPath>
+    <filter id="soft"><feGaussianBlur stdDeviation="0.4"/></filter>
+    <clipPath id="cl"><rect width="1200" height="240"/></clipPath>
   </defs>
+  <g clip-path="url(#cl)">
+  <rect width="1200" height="240" fill="#f5f0e8"/>
 
-  <g clip-path="url(#sc)">
-
-  <!-- ═══ KITCHEN BACKGROUND ═══ -->
-  <rect width="1200" height="300" fill="url(#kitchenBg)"/>
-  <rect width="1200" height="300" fill="url(#spotLight)"/>
-
-  <!-- Wooden paneling horizontal lines -->
-  <g stroke="#5a3c1a" stroke-width="1.5" opacity="0.4">
-    <line x1="0" y1="75" x2="1200" y2="75"/>
-    <line x1="0" y1="150" x2="1200" y2="150"/>
-    <line x1="0" y1="225" x2="1200" y2="225"/>
-  </g>
-  <!-- Wood grain dots/knots -->
-  <g fill="#4a3018" opacity="0.2">
-    <ellipse cx="80" cy="110" rx="18" ry="10" transform="rotate(-8,80,110)"/>
-    <ellipse cx="340" cy="55" rx="14" ry="7" transform="rotate(5,340,55)"/>
-    <ellipse cx="900" cy="188" rx="16" ry="8" transform="rotate(-4,900,188)"/>
-    <ellipse cx="1100" cy="80" rx="12" ry="6" transform="rotate(6,1100,80)"/>
+  <!-- ── WHISK — bottom-anchored, wires reach near top (y 0–230) ── -->
+  <g filter="url(#ink)" transform="translate(55,8)">
+    <path d="M55,232 Q54,200 54,170 Q53,144 55,122"
+      stroke="#2d4a3e" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M55,122 Q38,96 30,64 Q25,40 34,24 Q42,12 50,28 Q54,44 55,122"
+      stroke="#2d4a3e" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M55,122 Q52,90 48,60 Q44,34 52,22 Q60,12 65,30 Q68,48 55,122"
+      stroke="#2d4a3e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <path d="M55,122 Q64,94 68,64 Q72,40 64,26 Q57,14 52,32 Q55,54 55,122"
+      stroke="#2d4a3e" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M55,122 Q74,100 80,74 Q84,50 75,34 Q67,20 60,38 Q58,58 55,122"
+      stroke="#2d4a3e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <circle cx="26" cy="50" r="2" fill="#2d4a3e" opacity="0.20"/>
+    <circle cx="90" cy="40" r="1.6" fill="#2d4a3e" opacity="0.16"/>
   </g>
 
-  <!-- Countertop -->
-  <rect x="0" y="255" width="1200" height="45" fill="#5a3c1a"/>
-  <rect x="0" y="253" width="1200" height="6" fill="#7a5830" opacity="0.8"/>
-
-  <!-- ═══ LEFT SIDE CHAOS ═══ -->
-
-  <!-- Flying ingredients - loose vegetables -->
-  <!-- Potato tumbling -->
-  <g transform="rotate(18, 140, 105)" filter="url(#shadSm)">
-    <ellipse cx="140" cy="105" rx="42" ry="35" fill="#c8a858"/>
-    <ellipse cx="140" cy="105" rx="42" ry="35" fill="none" stroke="#9a7830" stroke-width="2"/>
-    <ellipse cx="128" cy="96" rx="10" ry="8" fill="#b09040" opacity="0.4"/>
-    <circle cx="155" cy="108" r="5" fill="#9a7830" opacity="0.45"/>
-    <circle cx="132" cy="116" r="4" fill="#9a7830" opacity="0.35"/>
+  <!-- ── BREAD LOAF — high up, y offset 8 ── -->
+  <g filter="url(#ink)" transform="translate(234,8)">
+    <path d="M0,168 Q-4,128 0,94 Q6,50 42,26 Q72,6 122,8 Q168,10 186,44 Q202,70 198,110 Q194,146 186,168 Z"
+      fill="#b85c38" opacity="0.20"/>
+    <path d="M0,168 Q-4,128 0,94 Q6,50 42,26 Q72,6 122,8 Q168,10 186,44 Q202,70 198,110 Q194,146 186,168 Z"
+      stroke="#b85c38" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.80"/>
+    <path d="M55,22 Q70,60 68,110" stroke="#2d4a3e" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.52"/>
+    <path d="M95,12 Q110,52 108,104" stroke="#2d4a3e" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.46"/>
+    <path d="M138,16 Q150,56 148,108" stroke="#2d4a3e" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.42"/>
+    <line x1="0" y1="168" x2="186" y2="168" stroke="#b85c38" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
+    <path d="M80,4 Q77,-14 81,-28" stroke="#2d4a3e" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.20"/>
+    <path d="M112,0 Q115,-18 112,-32" stroke="#2d4a3e" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.16"/>
+    <path d="M144,4 Q148,-12 144,-26" stroke="#2d4a3e" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.14"/>
   </g>
 
-  <!-- Herring fish - classic Swedish -->
-  <g transform="rotate(-18, 255, 72)" filter="url(#shadSm)">
-    <path d="M182,62 Q218,44 270,54 Q316,64 335,80 Q316,96 270,100 Q218,104 182,86 Z" fill="#7090a8"/>
-    <path d="M182,62 Q162,52 154,42 Q164,64 154,86 Q162,76 182,86 Z" fill="#6080a0"/>
-    <!-- Fish eye -->
-    <circle cx="320" cy="76" r="9" fill="white"/>
-    <circle cx="322" cy="75" r="5" fill="#1a2830"/>
-    <circle cx="324" cy="73" r="2" fill="white"/>
-    <!-- Scales -->
-    <g fill="none" stroke="#5070a0" stroke-width="1.2" opacity="0.45">
-      <path d="M224,60 Q234,54 244,60"/><path d="M244,56 Q254,50 264,56"/>
-      <path d="M222,72 Q232,66 242,72"/><path d="M242,68 Q252,62 262,68"/>
-      <path d="M220,84 Q230,78 240,84"/>
-    </g>
+  <!-- ── ROLLING PIN — pushed low, y offset 148 ── -->
+  <g filter="url(#ink)" transform="translate(490,148)">
+    <rect x="0" y="6" width="36" height="16" rx="8"
+      fill="#2d4a3e" opacity="0.18"/>
+    <rect x="0" y="6" width="36" height="16" rx="8"
+      stroke="#2d4a3e" stroke-width="3" fill="none" opacity="0.75"/>
+    <rect x="32" y="0" width="200" height="28" rx="4"
+      fill="#2d4a3e" opacity="0.12"/>
+    <rect x="32" y="0" width="200" height="28" rx="4"
+      stroke="#2d4a3e" stroke-width="3.5" fill="none" opacity="0.72"/>
+    <line x1="36" y1="4" x2="228" y2="4"
+      stroke="#2d4a3e" stroke-width="1.2" opacity="0.20" stroke-linecap="round"/>
+    <rect x="228" y="6" width="36" height="16" rx="8"
+      fill="#2d4a3e" opacity="0.18"/>
+    <rect x="228" y="6" width="36" height="16" rx="8"
+      stroke="#2d4a3e" stroke-width="3" fill="none" opacity="0.75"/>
+    <ellipse cx="100" cy="14" rx="10" ry="5" fill="#f5f0e8" opacity="0.55"/>
+    <ellipse cx="162" cy="11" rx="7" ry="4" fill="#f5f0e8" opacity="0.42"/>
   </g>
 
-  <!-- Rolling pin - chaotic angle -->
-  <g transform="rotate(-30, 285, 190)" filter="url(#shadSm)">
-    <rect x="200" y="182" width="38" height="19" rx="9.5" fill="#c9a050" stroke="#8a6820" stroke-width="2"/>
-    <rect x="238" y="176" width="160" height="26" rx="13" fill="#e8d8a8" stroke="#b89848" stroke-width="2"/>
-    <g stroke="#c8b888" stroke-width="1" opacity="0.4">
-      <line x1="268" y1="177" x2="268" y2="201"/><line x1="298" y1="177" x2="298" y2="201"/>
-      <line x1="328" y1="177" x2="328" y2="201"/><line x1="358" y1="177" x2="358" y2="201"/>
-    </g>
-    <rect x="398" y="182" width="38" height="19" rx="9.5" fill="#c9a050" stroke="#8a6820" stroke-width="2"/>
+  <!-- ── GARLIC — mid-high, y offset 72 ── -->
+  <g filter="url(#ink)" transform="translate(800,72)">
+    <path d="M18,50 Q10,36 14,20 Q18,8 26,6 Q34,4 36,16 Q38,28 32,44 Q28,52 18,50 Z"
+      fill="#c9a84c" opacity="0.18"/>
+    <path d="M18,50 Q10,36 14,20 Q18,8 26,6 Q34,4 36,16 Q38,28 32,44 Q28,52 18,50 Z"
+      stroke="#2d4a3e" stroke-width="2.2" fill="none" opacity="0.55"/>
+    <path d="M58,50 Q62,36 60,20 Q58,8 50,6 Q42,4 40,16 Q38,28 44,44 Q48,52 58,50 Z"
+      fill="#c9a84c" opacity="0.18"/>
+    <path d="M58,50 Q62,36 60,20 Q58,8 50,6 Q42,4 40,16 Q38,28 44,44 Q48,52 58,50 Z"
+      stroke="#2d4a3e" stroke-width="2.2" fill="none" opacity="0.55"/>
+    <path d="M22,80 Q8,62 12,38 Q16,16 28,10 Q40,4 50,12 Q60,22 58,46 Q56,66 42,80 Q34,86 22,80 Z"
+      fill="#c9a84c" opacity="0.22"/>
+    <path d="M22,80 Q8,62 12,38 Q16,16 28,10 Q40,4 50,12 Q60,22 58,46 Q56,66 42,80 Q34,86 22,80 Z"
+      stroke="#2d4a3e" stroke-width="3" fill="none" opacity="0.72"/>
+    <path d="M4,78 Q-6,60 -2,38 Q2,20 14,16 Q24,12 28,24 Q32,38 26,58 Q20,72 4,78 Z"
+      fill="#c9a84c" opacity="0.20"/>
+    <path d="M4,78 Q-6,60 -2,38 Q2,20 14,16 Q24,12 28,24 Q32,38 26,58 Q20,72 4,78 Z"
+      stroke="#2d4a3e" stroke-width="2.6" fill="none" opacity="0.65"/>
+    <path d="M72,76 Q82,58 78,36 Q74,18 62,14 Q52,10 48,22 Q44,36 50,56 Q56,70 72,76 Z"
+      fill="#c9a84c" opacity="0.20"/>
+    <path d="M72,76 Q82,58 78,36 Q74,18 62,14 Q52,10 48,22 Q44,36 50,56 Q56,70 72,76 Z"
+      stroke="#2d4a3e" stroke-width="2.6" fill="none" opacity="0.65"/>
+    <line x1="38" y1="5" x2="38" y2="-22"
+      stroke="#2d4a3e" stroke-width="2.5" stroke-linecap="round" opacity="0.58"/>
+    <path d="M34,-22 Q38,-32 42,-22" stroke="#2d4a3e" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.40"/>
+    <path d="M8,80 Q38,92 68,80" stroke="#2d4a3e" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.45"/>
+    <path d="M20,84 Q18,96 16,104" stroke="#2d4a3e" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.35"/>
+    <path d="M38,88 Q38,100 38,108" stroke="#2d4a3e" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.35"/>
+    <path d="M56,84 Q58,96 60,104" stroke="#2d4a3e" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.35"/>
   </g>
 
-  <!-- Splash of something liquid, top left -->
-  <g fill="#c84820" opacity="0.75" filter="url(#shadSm)">
-    <path d="M62,28 Q68,8 80,22 L88,48 Q72,50 62,28 Z"/>
-    <path d="M80,22 Q94,4 104,20 L106,46 L88,48 Z"/>
-    <path d="M104,20 Q112,6 120,22 L118,46 L106,46 Z"/>
-    <path d="M68,50 L88,48 L106,46 L118,46 Q110,62 88,64 Q72,62 68,50 Z"/>
-    <circle cx="64" cy="72" r="7"/>
-    <circle cx="55" cy="54" r="5"/>
-    <circle cx="122" cy="74" r="6"/>
+  <!-- ── FORK — low, y offset 30, tines point upward ── -->
+  <g filter="url(#ink)" transform="translate(960,30)" opacity="0.82">
+    <!-- Handle: long, tapers slightly -->
+    <path d="M18,230 Q17,190 16,150 Q15,110 15,88"
+      stroke="#2d4a3e" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <!-- Shoulder where tines split -->
+    <path d="M15,88 Q12,72 12,58" stroke="#2d4a3e" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <!-- 4 tines — parallel, clearly spaced -->
+    <line x1="4"  y1="58" x2="2"  y2="8" stroke="#2d4a3e" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="10" y1="58" x2="9"  y2="4" stroke="#2d4a3e" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="17" y1="58" x2="17" y2="4" stroke="#2d4a3e" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="24" y1="58" x2="25" y2="8" stroke="#2d4a3e" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- Cross-bar connecting tine bases -->
+    <line x1="2" y1="58" x2="26" y2="58" stroke="#2d4a3e" stroke-width="3" stroke-linecap="round"/>
   </g>
 
-  <!-- Motion lines top left -->
-  <g stroke="#c9a84c" stroke-linecap="round" opacity="0.4">
-    <line x1="30" y1="100" x2="70" y2="95" stroke-width="3"/>
-    <line x1="24" y1="118" x2="62" y2="115" stroke-width="2.5"/>
-    <line x1="28" y1="136" x2="64" y2="134" stroke-width="2"/>
+  <!-- ── KNIFE — high, y offset 6 ── -->
+  <g filter="url(#ink)" transform="translate(1112,6)" opacity="0.78">
+    <path d="M6,0 Q18,-2 20,8 L20,148 Q16,152 10,150 Q4,148 4,140 L2,8 Q2,0 6,0 Z"
+      fill="#2d4a3e" opacity="0.14"/>
+    <path d="M6,0 Q18,-2 20,8 L20,148 Q16,152 10,150 Q4,148 4,140 L2,8 Q2,0 6,0 Z"
+      stroke="#2d4a3e" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.68"/>
+    <rect x="2" y="146" width="20" height="7" rx="2" fill="#2d4a3e" opacity="0.42"/>
+    <rect x="3" y="153" width="18" height="62" rx="4"
+      fill="#b85c38" opacity="0.26"/>
+    <rect x="3" y="153" width="18" height="62" rx="4"
+      stroke="#b85c38" stroke-width="2.8" fill="none" opacity="0.72"/>
+    <circle cx="12" cy="167" r="3" fill="#2d4a3e" opacity="0.48"/>
+    <circle cx="12" cy="184" r="3" fill="#2d4a3e" opacity="0.44"/>
+    <circle cx="12" cy="201" r="3" fill="#2d4a3e" opacity="0.40"/>
   </g>
 
-  <!-- ═══ RIGHT SIDE CHAOS ═══ -->
+  <!-- ── Scattered herbs & dots ── -->
+  <g opacity="0.44" filter="url(#soft)">
+    <path d="M185,88 Q180,72 174,58" stroke="#2d4a3e" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+    <path d="M181,76 Q171,70 168,62" stroke="#2d4a3e" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+    <path d="M178,83 Q169,81 167,72" stroke="#2d4a3e" stroke-width="1.4" fill="none" stroke-linecap="round"/>
 
-  <!-- Flying saucepan -->
-  <g transform="rotate(25, 978, 88)" filter="url(#shadSm)">
-    <!-- Handle -->
-    <rect x="868" y="76" width="124" height="20" rx="10" fill="#2e2820" stroke="#484030" stroke-width="1.5"/>
-    <!-- Pan body -->
-    <path d="M986,34 L998,136 Q998,148 986,148 L898,148 Q886,148 886,136 L898,34 Z" fill="#3a3428"/>
-    <path d="M886,34 L1000,34 Q1002,22 994,18 L892,18 Q884,22 886,34 Z" fill="#4a4438"/>
-    <!-- Content: sauce bubbling -->
-    <ellipse cx="942" cy="94" rx="50" ry="45" fill="#b84020" opacity="0.88"/>
-    <circle cx="925" cy="80" r="10" fill="#e06040" opacity="0.6"/>
-    <circle cx="958" cy="108" r="8" fill="#e06040" opacity="0.5"/>
-    <circle cx="935" cy="110" r="6" fill="#e06040" opacity="0.45"/>
+    <path d="M456,98 Q462,80 468,66" stroke="#2d4a3e" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+    <path d="M460,85 Q470,80 474,72" stroke="#2d4a3e" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+    <path d="M463,92 Q472,91 474,82" stroke="#2d4a3e" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+
+    <path d="M748,185 Q754,167 752,152" stroke="#2d4a3e" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    <path d="M750,171 Q760,166 762,159" stroke="#2d4a3e" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+
+    <path d="M902,115 Q908,97 906,82" stroke="#2d4a3e" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    <path d="M904,101 Q914,97 916,90" stroke="#2d4a3e" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+
+    <circle cx="158" cy="104" r="2.4" fill="#b85c38"/>
+    <circle cx="216" cy="188" r="1.8" fill="#2d4a3e" opacity="0.55"/>
+    <circle cx="436" cy="192" r="2.2" fill="#b85c38"/>
+    <circle cx="726" cy="202" r="1.8" fill="#c9a84c" opacity="0.80"/>
+    <circle cx="880" cy="130" r="2"   fill="#2d4a3e" opacity="0.50"/>
+    <circle cx="1078" cy="180" r="1.8" fill="#b85c38" opacity="0.60"/>
   </g>
-
-  <!-- Sauce splatter right wall -->
-  <g fill="#b84020" opacity="0.65">
-    <circle cx="1078" cy="44" r="14"/>
-    <circle cx="1096" cy="76" r="10"/>
-    <circle cx="1068" cy="86" r="8"/>
-    <path d="M1078,58 Q1082,68 1078,82" stroke="#b84020" stroke-width="7" fill="none" stroke-linecap="round"/>
-    <circle cx="1112" cy="38" r="9"/>
-    <circle cx="1130" cy="62" r="12"/>
-    <path d="M1130,74 Q1134,86 1130,100" stroke="#b84020" stroke-width="6" fill="none" stroke-linecap="round"/>
-    <circle cx="1130" cy="104" r="7"/>
-    <circle cx="1148" cy="122" r="5"/>
-    <circle cx="1058" cy="110" r="6"/>
   </g>
-
-  <!-- Meatballs arc trajectory -->
-  <g filter="url(#shadSm)">
-    <circle cx="1060" cy="180" r="26" fill="#7a3818" stroke="#5a2410" stroke-width="2"/>
-    <ellipse cx="1052" cy="172" rx="8" ry="7" fill="#9a4828" opacity="0.5"/>
-    <circle cx="1115" cy="136" r="20" fill="#7a3818" stroke="#5a2410" stroke-width="1.5"/>
-    <circle cx="1155" cy="172" r="16" fill="#7a3818" stroke="#5a2410" stroke-width="1.5"/>
-  </g>
-  <path d="M1060,180 Q1088,158 1115,136" fill="none" stroke="#9a4828" stroke-width="2" stroke-dasharray="5,7" opacity="0.5"/>
-  <path d="M1115,136 Q1135,154 1155,172" fill="none" stroke="#9a4828" stroke-width="2" stroke-dasharray="5,7" opacity="0.5"/>
-
-  <!-- Onion bouncing -->
-  <g transform="translate(796, 228) rotate(15)" filter="url(#shadSm)">
-    <ellipse cx="0" cy="0" rx="35" ry="38" fill="#f0e8b8" stroke="#c8bc80" stroke-width="1.5"/>
-    <path d="M-20,-30 Q0,-52 20,-30" fill="#4a8030" stroke="#2a5818" stroke-width="1.5"/>
-    <path d="M-10,-32 Q0,-48 10,-32" fill="#6aaa50" stroke="#2a5818" stroke-width="1"/>
-    <g fill="none" stroke="#c8bc80" stroke-width="1.2" opacity="0.5">
-      <path d="M-28,-8 Q0,6 28,-8"/><path d="M-30,6 Q0,20 30,6"/>
-      <path d="M-26,-20 Q0,-8 26,-20"/>
-    </g>
-  </g>
-
-  <!-- ═══════════════════════════════════════════ -->
-  <!-- THE CHEF - MUPPET PUPPET STYLE -->
-  <!-- ═══════════════════════════════════════════ -->
-  <g filter="url(#shad)">
-
-  <!-- CHEF COAT - white felt with puppet proportions -->
-  <g filter="url(#feltWhite)">
-    <path d="M468,300 Q458,228 484,196
-             L516,178 L684,178 L716,196
-             Q742,228 732,300 Z"
-          fill="#f0eee8" stroke="#d8d4cc" stroke-width="2"/>
-  </g>
-  <!-- Coat shading -->
-  <path d="M468,300 Q458,228 484,196 L516,178 L530,192 Q506,226 512,300 Z" fill="#d8d4cc" opacity="0.4"/>
-  <!-- Double row buttons -->
-  <g fill="#c9a84c" stroke="#8a6a18" stroke-width="1.5">
-    <circle cx="558" cy="210" r="8"/><circle cx="558" cy="238" r="8"/><circle cx="558" cy="266" r="8"/>
-    <circle cx="642" cy="210" r="8"/><circle cx="642" cy="238" r="8"/><circle cx="642" cy="266" r="8"/>
-  </g>
-  <!-- Lapels -->
-  <path d="M524,184 Q534,160 558,156 L600,172 L642,156 Q666,160 676,184 L600,196 Z"
-        fill="#e8e4dc" stroke="#d0ccc4" stroke-width="1.5" filter="url(#feltWhite)"/>
-  <path d="M524,184 L554,156 L600,196 Z" fill="#d8d4cc" opacity="0.5"/>
-  <path d="M676,184 L646,156 L600,196 Z" fill="#d8d4cc" opacity="0.5"/>
-  <line x1="600" y1="178" x2="600" y2="300" stroke="#d0ccc4" stroke-width="1.5"/>
-
-  <!-- LEFT ARM - thick muppet arm, raised, holding whisk -->
-  <path d="M488,200 Q444,210 400,182 Q370,163 348,142"
-        fill="none" stroke="#f0eee8" stroke-width="46" stroke-linecap="round" filter="url(#feltWhite)"/>
-  <path d="M488,200 Q444,210 400,182 Q370,163 348,142"
-        fill="none" stroke="#d8d4cc" stroke-width="50" stroke-linecap="round" opacity="0.35"/>
-  <!-- Cuff -->
-  <ellipse cx="344" cy="140" rx="26" ry="20" fill="#d8d4cc" stroke="#c0bcb4" stroke-width="2"
-           transform="rotate(-25,344,140)" filter="url(#feltWhite)"/>
-  <!-- Muppet hand - simple rounded -->
-  <path d="M316,128 Q296,116 294,130 Q292,146 306,156
-           Q324,166 344,158 Q364,148 360,130
-           Q354,114 334,116 Z"
-        fill="#c87840" stroke="#a85a28" stroke-width="2" filter="url(#felt)"/>
-  <!-- Whisk in hand -->
-  <g transform="rotate(-78, 275, 70)">
-    <rect x="262" y="30" width="14" height="100" rx="7" fill="#6a4a18" stroke="#3a2808" stroke-width="1.5"/>
-    <g stroke="#b09030" stroke-width="3.5" fill="none">
-      <path d="M269,28 Q296,6 298,-18 Q294,-42 274,-42 Q256,-42 260,-18 Q264,6 269,28"/>
-      <path d="M276,30 Q306,4 306,-22 Q300,-48 280,-48 Q262,-46 268,-22 Q272,4 276,30"/>
-      <path d="M262,30 Q282,8 282,-16 Q276,-40 258,-40 Q242,-38 246,-16 Q250,8 262,30"/>
-    </g>
-    <ellipse cx="269" cy="30" rx="12" ry="6.5" fill="#b09030" stroke="#3a2808" stroke-width="1"/>
-  </g>
-
-  <!-- RIGHT ARM - raised high with wooden spoon -->
-  <path d="M712,200 Q756,210 800,182 Q830,163 852,142"
-        fill="none" stroke="#f0eee8" stroke-width="46" stroke-linecap="round" filter="url(#feltWhite)"/>
-  <path d="M712,200 Q756,210 800,182 Q830,163 852,142"
-        fill="none" stroke="#d8d4cc" stroke-width="50" stroke-linecap="round" opacity="0.35"/>
-  <!-- Cuff -->
-  <ellipse cx="856" cy="140" rx="26" ry="20" fill="#d8d4cc" stroke="#c0bcb4" stroke-width="2"
-           transform="rotate(25,856,140)" filter="url(#feltWhite)"/>
-  <!-- Hand -->
-  <path d="M862,126 Q882,114 886,128 Q890,144 876,156
-           Q858,166 840,158 Q820,148 826,130
-           Q832,114 852,116 Z"
-        fill="#c87840" stroke="#a85a28" stroke-width="2" filter="url(#felt)"/>
-  <!-- Wooden spoon -->
-  <g transform="rotate(75, 920, 75)">
-    <rect x="908" y="28" width="14" height="102" rx="7" fill="#7a5020" stroke="#4a2e08" stroke-width="1.5"/>
-    <ellipse cx="915" cy="22" rx="26" ry="19" fill="#9a6830" stroke="#4a2e08" stroke-width="2"/>
-    <ellipse cx="915" cy="22" rx="17" ry="12" fill="#7a5020" opacity="0.45"/>
-  </g>
-
-  <!-- NECK -->
-  <rect x="574" y="164" width="52" height="26" rx="13" fill="#c87840" stroke="#a85a28" stroke-width="1.5"
-        filter="url(#felt)"/>
-
-  <!-- HEAD - the heart of the puppet, very round, felt texture -->
-  <g filter="url(#felt)">
-    <ellipse cx="600" cy="100" rx="104" ry="98" fill="url(#faceGrad)" stroke="#a86030" stroke-width="3"/>
-  </g>
-  <!-- Felt texture layer 2 - slightly different seed -->
-  <ellipse cx="600" cy="100" rx="104" ry="98" fill="none" stroke="#b87040" stroke-width="1" opacity="0.2" stroke-dasharray="3,12"/>
-
-  <!-- Head shading - gives roundness -->
-  <ellipse cx="560" cy="80" rx="50" ry="35" fill="#e8a870" opacity="0.22" filter="url(#blr)"/>
-  <path d="M700,60 Q718,100 710,145" fill="none" stroke="#985820" stroke-width="20" stroke-linecap="round" opacity="0.15" filter="url(#blr)"/>
-  <path d="M500,60 Q482,100 490,145" fill="none" stroke="#985820" stroke-width="20" stroke-linecap="round" opacity="0.12" filter="url(#blr)"/>
-
-  <!-- Puppet chin definition -->
-  <path d="M510,158 Q560,180 600,182 Q640,180 690,158" fill="none" stroke="#985820" stroke-width="3" opacity="0.25"/>
-
-  <!-- CHEF HAT - tall, white felt, slightly droopy/worn -->
-  <!-- Hat brim/band -->
-  <g filter="url(#feltWhite)">
-    <rect x="494" y="14" width="212" height="30" rx="7" fill="#e8e6de" stroke="#c8c4bc" stroke-width="2"/>
-    <!-- Blue band - Swedish Chef signature -->
-    <rect x="494" y="22" width="212" height="12" rx="3" fill="#2a4080" opacity="0.75"/>
-    <!-- Hat body -->
-    <path d="M504,18 Q498,2 502,-8 Q528,-24 600,-26 Q672,-24 698,-8 Q702,2 696,18 Z"
-          fill="#f0eee8" stroke="#d8d4cc" stroke-width="2"/>
-    <!-- Hat puff top - slightly irregular for puppet feel -->
-    <path d="M518,0 Q524,-28 558,-36 Q600,-42 642,-36 Q676,-28 682,0 Q650,-16 600,-18 Q550,-16 518,0 Z"
-          fill="#f0eee8" stroke="#d8d4cc" stroke-width="2"/>
-  </g>
-  <!-- Hat wrinkle lines -->
-  <g stroke="#d0ccc4" stroke-width="1.2" opacity="0.5">
-    <line x1="528" y1="16" x2="522" y2="-12"/>
-    <line x1="552" y1="17" x2="548" y2="-22"/>
-    <line x1="576" y1="18" x2="574" y2="-26"/>
-    <line x1="600" y1="18" x2="600" y2="-28"/>
-    <line x1="624" y1="18" x2="626" y2="-26"/>
-    <line x1="648" y1="17" x2="652" y2="-22"/>
-    <line x1="672" y1="16" x2="678" y2="-12"/>
-  </g>
-
-  <!-- ═══ THE EYES - ping-pong ball style ═══ -->
-  <!-- The Swedish Chef has droopy, half-lidded eyes over round white balls -->
-
-  <!-- Eye shadow/socket - dark felt recesses -->
-  <ellipse cx="548" cy="92" rx="40" ry="36" fill="#8a4820" opacity="0.30" filter="url(#blr)"/>
-  <ellipse cx="652" cy="92" rx="40" ry="36" fill="#8a4820" opacity="0.30" filter="url(#blr)"/>
-
-  <!-- Eyeball whites - LARGE, round like ping-pong balls -->
-  <g filter="url(#glow)">
-    <circle cx="548" cy="94" r="34" fill="url(#eyeGrad)" stroke="#b08850" stroke-width="2.5"/>
-    <circle cx="652" cy="94" r="34" fill="url(#eyeGrad)" stroke="#b08850" stroke-width="2.5"/>
-  </g>
-
-  <!-- Irises - pale blue (Swedish Chef has blue eyes) -->
-  <circle cx="552" cy="98" r="20" fill="#4a6888"/>
-  <circle cx="648" cy="96" r="20" fill="#4a6888"/>
-
-  <!-- Pupils - large, round -->
-  <circle cx="554" cy="100" r="12" fill="#0a0808"/>
-  <circle cx="646" cy="98" r="12" fill="#0a0808"/>
-
-  <!-- Eye gleam - oversized cartoon highlight -->
-  <circle cx="560" cy="92" r="6.5" fill="white" opacity="0.95"/>
-  <circle cx="654" cy="90" r="6.5" fill="white" opacity="0.95"/>
-  <circle cx="548" cy="106" r="3" fill="white" opacity="0.5"/>
-  <circle cx="640" cy="104" r="3" fill="white" opacity="0.5"/>
-
-  <!-- HEAVY DROOPING EYELIDS - key Swedish Chef feature, felt colored -->
-  <!-- Left eyelid - droopy, covers top 40% of eyeball -->
-  <path d="M514,72 Q548,58 582,72 Q570,96 548,98 Q526,96 514,72 Z"
-        fill="#c87840" stroke="#a86030" stroke-width="1.5" filter="url(#felt)"/>
-  <!-- Eyelid crease/fold -->
-  <path d="M518,74 Q548,62 578,74" fill="none" stroke="#985820" stroke-width="2.5" opacity="0.6"/>
-  <!-- Eyelash suggestion left -->
-  <g stroke="#3a1808" stroke-width="2.2" stroke-linecap="round" opacity="0.7">
-    <line x1="520" y1="71" x2="512" y2="62"/><line x1="534" y1="64" x2="530" y2="54"/>
-    <line x1="549" y1="60" x2="547" y2="50"/><line x1="564" y1="63" x2="566" y2="53"/>
-    <line x1="578" y1="70" x2="584" y2="61"/>
-  </g>
-
-  <!-- Right eyelid - droopy -->
-  <path d="M618,70 Q652,56 686,70 Q674,94 652,96 Q630,94 618,70 Z"
-        fill="#c87840" stroke="#a86030" stroke-width="1.5" filter="url(#felt)"/>
-  <path d="M622,72 Q652,60 682,72" fill="none" stroke="#985820" stroke-width="2.5" opacity="0.6"/>
-  <g stroke="#3a1808" stroke-width="2.2" stroke-linecap="round" opacity="0.7">
-    <line x1="622" y1="69" x2="614" y2="60"/><line x1="636" y1="62" x2="632" y2="52"/>
-    <line x1="651" y1="58" x2="649" y2="48"/><line x1="666" y1="61" x2="668" y2="51"/>
-    <line x1="680" y1="68" x2="686" y2="59"/>
-  </g>
-
-  <!-- HEAVY EYEBROWS - thick, expressive, swept upward on outer edge (alarm/chaos) -->
-  <!-- Left brow -->
-  <path d="M508,60 Q532,40 580,48" fill="none" stroke="#2a1008" stroke-width="18" stroke-linecap="round"/>
-  <path d="M508,60 Q532,40 580,48" fill="none" stroke="#4a2818" stroke-width="10" stroke-linecap="round"/>
-  <path d="M510,59 Q534,41 578,49" fill="none" stroke="#6a3820" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
-  <!-- Right brow -->
-  <path d="M620,48 Q668,40 692,60" fill="none" stroke="#2a1008" stroke-width="18" stroke-linecap="round"/>
-  <path d="M620,48 Q668,40 692,60" fill="none" stroke="#4a2818" stroke-width="10" stroke-linecap="round"/>
-  <path d="M622,49 Q668,41 690,59" fill="none" stroke="#6a3820" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
-
-  <!-- NOSE - bulbous, round, center of face -->
-  <g filter="url(#felt)">
-    <circle cx="600" cy="120" r="24" fill="#c07038" stroke="#985020" stroke-width="2"/>
-  </g>
-  <circle cx="592" cy="113" r="9" fill="#d88848" opacity="0.45"/>
-  <ellipse cx="590" cy="127" rx="7" ry="6" fill="#885028" opacity="0.55"/>
-  <ellipse cx="611" cy="127" rx="7" ry="6" fill="#885028" opacity="0.55"/>
-
-  <!-- Cheek puffiness / rosy blush -->
-  <ellipse cx="520" cy="126" rx="30" ry="24" fill="#b84820" opacity="0.18" filter="url(#blr)"/>
-  <ellipse cx="680" cy="126" rx="30" ry="24" fill="#b84820" opacity="0.18" filter="url(#blr)"/>
-
-  <!-- ═══ THE MAGNIFICENT MOUSTACHE ═══ -->
-  <!-- White/cream, ENORMOUS, drooping, hairy felt texture -->
-  <!-- This covers the mouth entirely - typical Swedish Chef -->
-  <g filter="url(#feltMust)">
-
-  <!-- Main moustache mass - left side -->
-  <path d="M575,140
-           Q558,138 536,146
-           Q508,158 480,180
-           Q452,203 444,224
-           Q438,242 450,252
-           Q466,260 486,250
-           Q512,236 534,214
-           Q560,188 576,162
-           Q580,154 578,146 Z"
-        fill="#f8f4ec" stroke="#e0dcd0" stroke-width="1.5"/>
-
-  <!-- Left wing lower volume -->
-  <path d="M575,140 Q556,142 536,154
-           Q510,168 488,192 Q466,216 458,236"
-        fill="none" stroke="#e8e4dc" stroke-width="12" stroke-linecap="round" opacity="0.6"/>
-
-  <!-- Left tip curl - tight upward curl -->
-  <path d="M444,224 Q428,244 436,256 Q448,268 464,258 Q480,246 472,230 Q464,216 450,220 Z"
-        fill="#f8f4ec" stroke="#e0dcd0" stroke-width="1.5"/>
-
-  <!-- Right side - mirrored -->
-  <path d="M625,140
-           Q642,138 664,146
-           Q692,158 720,180
-           Q748,203 756,224
-           Q762,242 750,252
-           Q734,260 714,250
-           Q688,236 666,214
-           Q640,188 624,162
-           Q620,154 622,146 Z"
-        fill="#f8f4ec" stroke="#e0dcd0" stroke-width="1.5"/>
-
-  <!-- Right wing lower volume -->
-  <path d="M625,140 Q644,142 664,154
-           Q690,168 712,192 Q734,216 742,236"
-        fill="none" stroke="#e8e4dc" stroke-width="12" stroke-linecap="round" opacity="0.6"/>
-
-  <!-- Right tip curl -->
-  <path d="M756,224 Q772,244 764,256 Q752,268 736,258 Q720,246 728,230 Q736,216 750,220 Z"
-        fill="#f8f4ec" stroke="#e0dcd0" stroke-width="1.5"/>
-
-  <!-- Center bridge - connects across upper lip -->
-  <path d="M578,146 Q588,134 600,132 Q612,134 622,146
-           Q614,156 600,158 Q586,156 578,146 Z"
-        fill="#f8f4ec" stroke="#e0dcd0" stroke-width="1.5"/>
-
-  </g><!-- end feltMust -->
-
-  <!-- Moustache hair texture strokes - gives it the puppet/fuzzy feel -->
-  <g stroke="#d0ccbe" stroke-linecap="round" opacity="0.55">
-    <!-- Left wing hairs -->
-    <path d="M540,152 Q528,165 530,178" stroke-width="2"/>
-    <path d="M520,166 Q506,180 509,196" stroke-width="1.8"/>
-    <path d="M504,180 Q489,196 493,212" stroke-width="1.8"/>
-    <path d="M488,198 Q472,214 476,230" stroke-width="1.8"/>
-    <path d="M466,220 Q452,234 458,248" stroke-width="1.8"/>
-    <path d="M556,148 Q546,158 550,170" stroke-width="1.5"/>
-    <path d="M536,160 Q524,173 528,186" stroke-width="1.5"/>
-    <path d="M514,178 Q500,194 505,208" stroke-width="1.5"/>
-    <path d="M496,198 Q480,215 485,230" stroke-width="1.5"/>
-    <path d="M474,218 Q458,232 463,248" stroke-width="1.5"/>
-    <!-- Right wing hairs (mirrored) -->
-    <path d="M660,152 Q672,165 670,178" stroke-width="2"/>
-    <path d="M680,166 Q694,180 691,196" stroke-width="1.8"/>
-    <path d="M696,180 Q711,196 707,212" stroke-width="1.8"/>
-    <path d="M712,198 Q728,214 724,230" stroke-width="1.8"/>
-    <path d="M734,220 Q748,234 742,248" stroke-width="1.8"/>
-    <path d="M644,148 Q654,158 650,170" stroke-width="1.5"/>
-    <path d="M664,160 Q676,173 672,186" stroke-width="1.5"/>
-    <path d="M686,178 Q700,194 695,208" stroke-width="1.5"/>
-    <path d="M704,198 Q720,215 715,230" stroke-width="1.5"/>
-    <path d="M726,218 Q742,232 737,248" stroke-width="1.5"/>
-    <!-- Center bridge hairs -->
-    <path d="M585,142 Q586,152 584,160" stroke-width="1.5"/>
-    <path d="M598,138 Q599,150 597,160" stroke-width="1.5"/>
-    <path d="M612,142 Q612,152 614,160" stroke-width="1.5"/>
-  </g>
-
-  </g><!-- end chef shadow -->
-
-  <!-- ═══ ENERGY / MOTION ═══ -->
-  <!-- Chef arm energy lines -->
-  <g stroke="#c9a84c" stroke-linecap="round" opacity="0.45">
-    <line x1="328" y1="132" x2="296" y2="118" stroke-width="3"/>
-    <line x1="332" y1="148" x2="298" y2="144" stroke-width="2.5"/>
-    <line x1="338" y1="164" x2="308" y2="164" stroke-width="2"/>
-    <line x1="868" y1="130" x2="902" y2="118" stroke-width="3"/>
-    <line x1="864" y1="146" x2="898" y2="142" stroke-width="2.5"/>
-    <line x1="860" y1="162" x2="892" y2="162" stroke-width="2"/>
-  </g>
-
-  </g><!-- clip -->
 </svg>`;
   return h("div", {dangerouslySetInnerHTML:{__html:svg}, style:{lineHeight:0}});
 }
@@ -810,9 +486,14 @@ function App(){
   // Get best voice for lang code
   function getBestVoice(langCode) {
     const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-    return voices.find(v => v.lang === langCode)
-        || voices.find(v => v.lang.startsWith(langCode.slice(0,2)))
-        || null;
+    const lang2 = langCode.slice(0,2);
+    // Prefer remote/network voices (higher quality) over local ones
+    const exact = voices.filter(v => v.lang === langCode);
+    const broad = voices.filter(v => v.lang.startsWith(lang2) && v.lang !== langCode);
+    // Among exact matches, prefer non-local (Google/network voices are better)
+    const bestExact = exact.find(v => !v.localService) || exact[0];
+    const bestBroad = broad.find(v => !v.localService) || broad[0];
+    return bestExact || bestBroad || null;
   }
 
   // Speak one segment, call onEnd when done
@@ -930,7 +611,27 @@ function App(){
   const [winW,    setWinW]    = useState(window.innerWidth);
   const fileRef=useRef();
 
-  useEffect(()=>{
+
+  // Space = play/pause TTS
+  useEffect(() => {
+    const fn = (e) => {
+      if (!ttsSegsRef.current.length) return;
+      if (e.code !== 'Space') return;
+      // Don't intercept if user is typing in a textarea/input
+      const tag = document.activeElement && document.activeElement.tagName;
+      if (tag === 'TEXTAREA' || tag === 'INPUT') return;
+      e.preventDefault();
+      if (ttsPlaying) {
+        ttsPause();
+      } else {
+        ttsPlay();
+      }
+    };
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
+  }, [ttsPlaying, ttsPaused]);
+
+    useEffect(()=>{
     const fn=()=>setWinW(window.innerWidth);
     window.addEventListener("resize",fn);
     return()=>window.removeEventListener("resize",fn);
