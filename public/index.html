@@ -457,6 +457,8 @@ function App(){
   const [ttsPlaying,setTtsPlaying] = useState(false);
   const [ttsPaused, setTtsPaused]  = useState(false);
   const [ttsIdx,    setTtsIdx]     = useState(0);     // current segment index
+  const [ttsVoiceName, setTtsVoiceName] = useState(''); // '' = auto
+  const [ttsVoiceList, setTtsVoiceList] = useState([]);
   const ttsSegsRef  = React.useRef([]);  // built from recipe
   const ttsIdxRef   = React.useRef(0);  // mirrored for closure access
   const ttsActiveRef= React.useRef(false);
@@ -495,7 +497,11 @@ function App(){
   // Pre-warm voice cache on first render
   useEffect(() => {
     if (!window.speechSynthesis) return;
-    const load = () => { voicesCacheRef.current = window.speechSynthesis.getVoices(); };
+    const load = () => {
+      const vs = window.speechSynthesis.getVoices();
+      voicesCacheRef.current = vs;
+      setTtsVoiceList(vs);
+    };
     load();
     window.speechSynthesis.onvoiceschanged = load;
     return () => { if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null; };
@@ -504,6 +510,11 @@ function App(){
   function getBestVoice(langCode) {
     const voices = getVoices();
     const lang2 = langCode.slice(0,2);
+    // Manual override: user selected a specific voice
+    if (ttsVoiceName) {
+      const manual = voices.find(v => v.name === ttsVoiceName);
+      if (manual) return manual;
+    }
     // Priority 1: Google voice for this language (network quality, most natural)
     const google = voices.find(v =>
       v.name.toLowerCase().includes('google') && v.lang.startsWith(lang2));
@@ -964,6 +975,22 @@ function App(){
               style:{width:30,height:30,borderRadius:"50%",border:"1.5px solid "+BO,background:"transparent",color:MI,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.15s"}},
               h("svg",{width:11,height:11,viewBox:"0 0 24 24",fill:"currentColor"},h("rect",{x:3,y:3,width:18,height:18,rx:2}))
             )
+          ),
+          // Voice selector (only show when voices loaded)
+          ttsVoiceList.length>0 && h("select",{
+            value: ttsVoiceName,
+            onChange: e => setTtsVoiceName(e.target.value),
+            title: "Välj röst",
+            style:{
+              fontFamily:"sans-serif", fontSize:10, padding:"3px 6px",
+              border:"1.5px solid "+BO, borderRadius:4, background:"transparent",
+              color:MI, cursor:"pointer", maxWidth:140, flexShrink:0
+            }
+          },
+            h("option",{value:""},"Röst: auto"),
+            ...ttsVoiceList.map(v => h("option",{key:v.name, value:v.name},
+              v.name.replace(/^Google /,'★ ').slice(0,28)
+            ))
           ),
           // Label + progress
           h("div",{style:{display:"flex",flexDirection:"column",gap:2,flex:1,minWidth:120}},
