@@ -12,7 +12,7 @@
  *  8. URL + Mistral fetch timeouts
  *  9. Prompt injection guard in system prompt
  * 10. Sanitized error messages — no internal details leak to client
- * 11. Log injection prevention — user data sanitized before logging
+ * 11. Log injection prevention — user data saanitized before logging
  * 12. Timing-safe comparison for tokens
  * 13. Output sanitization on validateRecipe
  */
@@ -181,22 +181,57 @@ function buildSystemPrompt(targetLanguage, measurementSystem) {
   const isSwedish = /swed|svensk/i.test(lang);
 
   const vocabSection = isSwedish ? `
-SVENSK KOEKSSVENSKA - anvaend alltid dessa termer:
-- fold in / fold -> vaend ner foersiktigt (INTE "vik in")
-- saute -> fraes  |  simmer -> laat sjuda  |  blanch -> skaalla
-- whisk / beat -> vispa  |  knead -> knaada  |  proof/rise -> jaes
-- deglaze -> haell i och skrapa upp stekskorpan  |  reduce -> reducera / koka in
-- broil -> grilla i ugnen ovanifraan  |  stir-fry -> woka  |  deep-fry -> fritera
-- braise -> braessera  |  poach -> pochera  |  render fat -> smaelt ut fettet
-- all-purpose flour -> vetemjoel  |  bread flour -> manitobamjoel
-- powdered sugar -> florsocker  |  brown sugar -> farinsocker  |  granulated sugar -> stroeosocker
-- heavy cream -> vispgraedde  |  buttermilk -> kaernmjoelk  |  sour cream -> creeme fraiche/graadfil
-- baking soda -> bikarbonat (INTE bakpulver!)  |  baking powder -> bakpulver (INTE bikarbonat!)
-- kosher/sea salt -> flingsalt  |  active dry yeast -> torrjaest  |  fresh yeast -> faersk jaest
-- vanilla extract -> vaniljextrakt  |  parchment paper -> bakplaatspapper
-- skillet -> stekpanna  |  dutch oven -> gjutjaernsgryta  |  wire rack -> galler
-- rubber spatula -> slickepott  |  springform pan -> springform
-- zest -> rivet skal  |  pinch -> en nypa  |  dash -> ett staenk  |  clove (garlic) -> klyfta vitloek
+SVENSK KOKSSVENSKA - använd alltid dessa termer:
+
+TEKNIKER:
+- fold in/fold -> vänd ner försiktigt (EJ "vik in")
+- sauté/fry -> fräs  |  simmer -> låt sjuda  |  blanch -> skålla
+- whisk/beat -> vispa  |  knead -> knåda  |  proof/rise -> jäs
+- deglaze -> häll i vätska och skrapa upp stekskorpan
+- reduce -> reducera / koka in  |  broil -> grilla i ugnen uppifrån
+- stir-fry -> woka  |  deep-fry -> fritera  |  braise -> brässera
+- poach -> pochera  |  render fat -> smält ut fettet
+- caramelize -> karamellisera  |  sear -> bryna hårt
+
+MJÖL & BAKPRODUKTER:
+- all-purpose flour -> vetemjöl  |  bread flour -> manitobamjöl
+- baking soda -> bikarbonat (EJ bakpulver!)
+- baking powder -> bakpulver (EJ bikarbonat!)
+- active dry yeast -> torrjäst  |  fresh yeast -> färsk jäst
+- parchment paper -> bakplåtspapper
+
+SOCKER & MEJERI:
+- powdered/icing sugar -> florsocker  |  brown sugar -> farinsocker
+- granulated sugar -> strösocker  |  corn syrup -> glykos
+- heavy cream -> vispgrädde  |  light cream -> matlagningsgrädde
+- buttermilk -> kärnmjölk  |  sour cream -> crème fraîche/gräddfil
+
+SALT & KRYDDOR:
+- kosher salt/sea salt -> flingsalt  |  table salt -> vanligt salt
+- vanilla extract -> vaniljextrakt  |  vanilla bean -> vaniljstång
+
+KÖKSREDSKAP:
+- skillet/frying pan -> stekpanna  |  dutch oven -> gjutjärnsgryta
+- wire rack -> galler  |  rubber spatula -> slickepott
+- springform pan -> springform  |  baking sheet -> bakplåt
+- nonstick pan/skillet -> nonstick-panna (EJ "antihaftbeläggning" eller tyskt lånord)
+- nonstick coating -> nonstick-beläggning
+
+INGREDIENSER:
+- zest -> rivet skal  |  pinch -> en nypa  |  dash -> ett stänk
+- clove (garlic) -> klyfta vitlök  |  scallion/green onion -> salladslök
+- cilantro -> koriander  |  arugula -> rucola  |  endive -> endiv
+
+MÅTT:
+- to taste -> efter smak (EJ q.s., q.p., eller liknande förkortning)
+- as needed -> efter behov  |  optional -> valfritt
+- a handful -> en handfull  |  about/approx -> ca / ungefär
+
+ABSOLUTA REGLER:
+- Skriv alltid fullständiga svenska ord, aldrig latinska förkortningar (q.s., q.b., ad lib.)
+- Använd internationella kökstermer när de är standard på svenska: nonstick, wok, gratin, steak
+- Undvik tyska lånord: antihaft- är tyskt, nonstick är korrekt svenska
+- Blanda ALDRIG engelska och svenska i samma fält
 ` : `
 VOCABULARY GUIDANCE:
 Use natural, professional culinary terminology in ${lang}. Never translate literally.
