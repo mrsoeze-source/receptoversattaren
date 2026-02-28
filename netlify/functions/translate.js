@@ -222,6 +222,9 @@ MAATTSYSTEM: IMPERIAL — behall cups, oz, lbs, F precis som i originalet.
 - NEVER add information not in the original
 - NEVER mix languages
 - Translate ALL ingredient names, units and techniques
+- NEVER use Latin or pharmaceutical abbreviations: write "efter smak" not "q.s." or "q.p.", write "tillräckligt" not "q.b.", write "valfritt" not "opt."
+- NEVER abbreviate: always write out full words ("matsked" not "msk", "tesked" not "tsk", "deciliter" not "dl")
+- Common translations: "to taste" = "efter smak", "as needed" = "efter behov", "optional" = "valfritt", "pinch" = "en nypa", "handful" = "en handfull"
 ${measureSection}
 ${vocabSection}
 JSON FIELD RULES:
