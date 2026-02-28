@@ -487,13 +487,48 @@ function App(){
   function getBestVoice(langCode) {
     const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
     const lang2 = langCode.slice(0,2);
-    // Prefer remote/network voices (higher quality) over local ones
+    // Priority 1: explicit Google voice name match for this language
+    const googleNames = ['Google ' + langCode, 'Google svenska', 'Google norsk',
+      'Google dansk', 'Google Deutsch', 'Google français', 'Google español',
+      'Google italiano', 'Google português', 'Google polski', 'Google čeština',
+      'Google română', 'Google Nederlands', 'Google suomi', 'Google 普通话',
+      'Google 日本語', 'Google 한국의'];
+    const google = voices.find(v => googleNames.some(n => v.name.startsWith(n))
+                                 && v.lang.startsWith(lang2));
+    if (google) return google;
+    // Priority 2: any non-local (network/cloud) voice for this language
     const exact = voices.filter(v => v.lang === langCode);
-    const broad = voices.filter(v => v.lang.startsWith(lang2) && v.lang !== langCode);
-    // Among exact matches, prefer non-local (Google/network voices are better)
+    const broad = voices.filter(v => v.lang.startsWith(lang2));
     const bestExact = exact.find(v => !v.localService) || exact[0];
     const bestBroad = broad.find(v => !v.localService) || broad[0];
     return bestExact || bestBroad || null;
+  }
+
+  // Expand cooking abbreviations so the voice reads them naturally
+  function ttsPreprocess(text, langCode) {
+    const sv = langCode && langCode.startsWith('sv');
+    if (sv) {
+      return text
+        .replace(/msk/gi, 'matsked')
+        .replace(/tsk/gi, 'tesked')
+        .replace(/krm/gi, 'kryddmått')
+        .replace(/dl/gi, 'deciliter')
+        .replace(/cl/gi, 'centiliter')
+        .replace(/ml/gi, 'milliliter')
+        .replace(/kg/gi, 'kilo')
+        .replace(/cm/gi, 'centimeter')
+        .replace(/ca\.?/gi, 'cirka')
+        .replace(/ca:?/gi, 'cirka')
+        .replace(/st/gi, 'stycken')
+        .replace(/min/gi, 'minuter')
+        .replace(/h/gi, 'timmar')
+        .replace(/C/g, 'grader celsius')
+        .replace(/°/g, ' grader ')
+        .replace(/ts/gi, 'tesked')
+        .replace(/ms/gi, 'matsked');
+    }
+    // For other languages just expand degree sign
+    return text.replace(/°/g, ' degrees ');
   }
 
   // Speak one segment, call onEnd when done
@@ -523,11 +558,12 @@ function App(){
     let ci = 0;
     function speakChunk() {
       if (ci >= chunks.length) { onEnd(); return; }
-      const u = new SpeechSynthesisUtterance(chunks[ci]);
+      const u = new SpeechSynthesisUtterance(ttsPreprocess(chunks[ci], langCode));
       u.lang = langCode;
       const voice = getBestVoice(langCode);
       if (voice) u.voice = voice;
-      u.rate = 0.92;
+      u.rate = 0.90;
+      u.pitch = 1.0;
       u.onend = () => { ci++; speakChunk(); };
       u.onerror = (e) => {
         // "interrupted" / "canceled" = we cancelled deliberately, don't advance
