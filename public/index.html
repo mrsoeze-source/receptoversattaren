@@ -484,24 +484,36 @@ function App(){
   }
 
   // Get best voice for lang code
+  // Cache voices after first load (Chrome loads them async)
+  const voicesCacheRef = useRef(null);
+  function getVoices() {
+    if (voicesCacheRef.current && voicesCacheRef.current.length) return voicesCacheRef.current;
+    const v = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    if (v.length) voicesCacheRef.current = v;
+    return v;
+  }
+  // Pre-warm voice cache on first render
+  useEffect(() => {
+    if (!window.speechSynthesis) return;
+    const load = () => { voicesCacheRef.current = window.speechSynthesis.getVoices(); };
+    load();
+    window.speechSynthesis.onvoiceschanged = load;
+    return () => { if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null; };
+  }, []);
+
   function getBestVoice(langCode) {
-    const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    const voices = getVoices();
     const lang2 = langCode.slice(0,2);
-    // Priority 1: explicit Google voice name match for this language
-    const googleNames = ['Google ' + langCode, 'Google svenska', 'Google norsk',
-      'Google dansk', 'Google Deutsch', 'Google français', 'Google español',
-      'Google italiano', 'Google português', 'Google polski', 'Google čeština',
-      'Google română', 'Google Nederlands', 'Google suomi', 'Google 普通话',
-      'Google 日本語', 'Google 한국의'];
-    const google = voices.find(v => googleNames.some(n => v.name.startsWith(n))
-                                 && v.lang.startsWith(lang2));
+    // Priority 1: Google voice for this language (network quality, most natural)
+    const google = voices.find(v =>
+      v.name.toLowerCase().includes('google') && v.lang.startsWith(lang2));
     if (google) return google;
-    // Priority 2: any non-local (network/cloud) voice for this language
+    // Priority 2: any other online/non-local voice
     const exact = voices.filter(v => v.lang === langCode);
     const broad = voices.filter(v => v.lang.startsWith(lang2));
-    const bestExact = exact.find(v => !v.localService) || exact[0];
-    const bestBroad = broad.find(v => !v.localService) || broad[0];
-    return bestExact || bestBroad || null;
+    return exact.find(v => !v.localService)
+        || broad.find(v => !v.localService)
+        || exact[0] || broad[0] || null;
   }
 
   // Expand cooking abbreviations so the voice reads them naturally
