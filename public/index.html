@@ -555,17 +555,19 @@ function App(){
   }
 
   // Speak one segment, call onEnd when done
+  // Azure TTS — plays one segment via /api/tts, calls onEnd when done
+  const ttsAudioRef = useRef(null); // current HTMLAudioElement
+
   function speakSegment(seg, langCode, onEnd) {
-    if (!window.speechSynthesis) return;
-    // Split long text into sentences to work around Chrome's ~15s cutoff bug.
-    // Chrome silently stops speaking utterances longer than ~200-250 chars.
-    const MAX = 220;
-    const text = seg.text || '';
+    const text = ttsPreprocess(seg.text || '', langCode);
+    if (!text.trim()) { onEnd(); return; }
+
+    // Split into ≤2800-char chunks on sentence boundaries (Azure F0 limit: 3000)
+    const MAX = 2800;
     const chunks = [];
     if (text.length <= MAX) {
       chunks.push(text);
     } else {
-      // Split on sentence boundaries first, then hard-cap remaining
       const sentences = text.match(/[^.!?]+[.!?]*\s*/g) || [text];
       let buf = '';
       for (const s of sentences) {
@@ -575,26 +577,37 @@ function App(){
       if (buf.trim()) chunks.push(buf.trim());
     }
 
-    // Speak all chunks in sequence; only fire onEnd after the last one.
-    // onerror does NOT call onEnd — cancel() fires onerror with "interrupted"
-    // which previously caused the next segment to play twice.
     let ci = 0;
     function speakChunk() {
+      if (!ttsActiveRef.current) return; // stopped
       if (ci >= chunks.length) { onEnd(); return; }
-      const u = new SpeechSynthesisUtterance(ttsPreprocess(chunks[ci], langCode));
-      u.lang = langCode;
-      const voice = getBestVoice(langCode);
-      if (voice) u.voice = voice;
-      u.rate = 0.90;
-      u.pitch = 1.0;
-      u.onend = () => { ci++; speakChunk(); };
-      u.onerror = (e) => {
-        // "interrupted" / "canceled" = we cancelled deliberately, don't advance
-        if (e.error === 'interrupted' || e.error === 'canceled') return;
-        // Real error: skip to next segment
-        onEnd();
-      };
-      window.speechSynthesis.speak(u);
+
+      fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: chunks[ci], lang: langCode }),
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (!ttsActiveRef.current) return;
+        if (!data.audio) throw new Error(data.error || 'No audio');
+        const audio = new Audio('data:audio/mp3;base64,' + data.audio);
+        ttsAudioRef.current = audio;
+        audio.playbackRate = 1.0;
+        audio.onended = () => { ci++; speakChunk(); };
+        audio.onerror = () => { onEnd(); }; // skip on error
+        audio.play().catch(() => onEnd());
+      })
+      .catch(() => {
+        // Azure failed — fall back to Web Speech API for this chunk
+        if (!window.speechSynthesis || !ttsActiveRef.current) { onEnd(); return; }
+        const u = new SpeechSynthesisUtterance(chunks[ci]);
+        u.lang = langCode;
+        u.rate = 0.90;
+        u.onend = () => { ci++; speakChunk(); };
+        u.onerror = () => onEnd();
+        window.speechSynthesis.speak(u);
+      });
     }
     speakChunk();
   }
@@ -617,7 +630,8 @@ function App(){
     if (!segs.length) return;
     const langCode = LANG_TO_BCP47[tLang] || 'sv-SE';
     if (ttsPaused) {
-      window.speechSynthesis.resume();
+      if (ttsAudioRef.current) { ttsAudioRef.current.play().catch(()=>{}); }
+      else if (window.speechSynthesis) window.speechSynthesis.resume();
       setTtsPaused(false); setTtsPlaying(true);
       return;
     }
@@ -628,15 +642,16 @@ function App(){
   }
 
   function ttsPause() {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.pause();
+    // Pause Azure audio if playing
+    if (ttsAudioRef.current) { ttsAudioRef.current.pause(); }
+    if (window.speechSynthesis) window.speechSynthesis.pause();
     setTtsPaused(true); setTtsPlaying(false);
   }
 
   function ttsStop() {
-    if (!window.speechSynthesis) return;
     ttsActiveRef.current = false;
-    window.speechSynthesis.cancel();
+    if (ttsAudioRef.current) { ttsAudioRef.current.pause(); ttsAudioRef.current = null; }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     setTtsPlaying(false); setTtsPaused(false);
     setTtsIdx(0); ttsIdxRef.current = 0;
   }
